@@ -13,6 +13,7 @@
 | Q6 | `weak_wifi` 판정 근거 | 오버레이 앱이 RSSI를 `device` 메시지로 송신(SCHEMA v1.1 초안). 진단 정확도 실험은 Clumsy 4종(`bandwidth`/`delay_jitter`/`loss`/`none`), `weak_wifi`는 정성 확인 | ✅ |
 | Q7 | 일정 | 발표 12/2, 동결 11/24. M2 11/6, M3 11/13, M4 11/20. M0은 10/19(폰 불필요)·10/23(통화) 분할 | ✅ |
 | Q8 | SCHEMA v1.1 | 초안 작성 완료. **팀원 확인 대기** → M1(10/26)까지 확정 | ⏳ |
+| Q9 | 진단 실험의 `delay_jitter` 라벨 | Clumsy lag(고정 지연)는 수신 trace에 흔적이 없어 진단할 수 없다(M2 선행 작업 발견 1). 지터를 만드는 Clumsy 모듈(throttle 등)을 쓸지, 라벨을 재정의할지는 **M0-7 Clumsy 테스트 때 실측을 보고 결정** | ⏳ |
 
 ## 일정 (발표 12/2, 동결 11/24)
 | 주 | 기간 | 외부 일정 | 마감 | 나 — ML·Python | 나 — Flutter 오버레이 | 팀원 — Web | ☎ 세션 | 상태 |
