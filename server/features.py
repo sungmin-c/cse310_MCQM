@@ -78,6 +78,38 @@ class WindowFeatures:
         return feats
 
 
+class RtpSeqLoss:
+    """RTP 순번 빈칸으로 본 손실률. RTP 헤더는 SRTP에서도 평문이라 네트워크에서 보인다.
+
+    RTP를 해석할 수 없는 앱(예: 확인 전의 Kakao)에서는 쓰지 않는다 → 진단은 IP/UDP 규칙만 사용.
+    순서가 뒤바뀐 패킷(diff ≤ 0)은 무시한다. diff가 3000을 넘으면 순번 재시작으로 보고 무시한다.
+    """
+
+    def __init__(self):
+        self._last = {}
+        self._recv = 0
+        self._gaps = 0
+
+    def push(self, ssrc, seq):
+        if ssrc is None or seq is None:
+            return
+        last = self._last.get(ssrc)
+        if last is not None:
+            diff = (seq - last) % 65536
+            if diff == 0 or diff > 3000:
+                return
+            self._gaps += diff - 1
+        self._last[ssrc] = seq
+        self._recv += 1
+
+    def take(self):
+        """직전 take 이후의 손실률. 받은 RTP 패킷이 없으면 None."""
+        n = self._recv + self._gaps
+        out = self._gaps / n if self._recv else None
+        self._recv = self._gaps = 0
+        return out
+
+
 def rows_from_csv(path):
     """vcaml 형식 CSV(tshark 14필드)를 push 인자 튜플로 순서대로 낸다.
 

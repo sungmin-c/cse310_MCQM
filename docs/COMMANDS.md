@@ -29,6 +29,16 @@
 | vcaml 원본 테스트 | `uv run pytest vcaml/tests` |
 | 대시보드 | `npm --prefix dashboard test` |
 
+## 실험·측정 스크립트 (in-lab 데이터 필요)
+| 목적 | 명령 | 결과 위치 |
+|---|---|---|
+| 원인 진단 합성 실험 (IP/UDP만) | `uv run python scripts/diag_synth.py --vca meet --split test` | `data/diag/summary_*.json`, `windows_*.csv` |
+| 원인 진단 합성 실험 (RTP 순번 포함) | 위 명령 + `--rtp` | 같은 곳 (`_rtp` 접미사) |
+| 진단 규칙 조정용 (dev 세트) | `--split dev` | test 결과는 조정에 쓰지 않는다 |
+| 1 tick 처리 시간 (지표 4개 + 진단 + What-if) | `uv run --with psutil python scripts/bench_tick.py --calls 10` | `data/bench/bench_tick.json` |
+
+`bench_tick.py`는 `data/models/meet_{fps,bitrate,frame_jitter,frameHeight}_cv1.pkl`이 필요하다 (솔로 MLflow fold-1 모델 복사본, 경로는 `CLAUDE.local.md`). `psutil`은 메모리 측정용 임시 의존성이다(`--with`, 프로젝트에 추가 안 함).
+
 ## 개발 서버
 | 목적 | 명령 | 확인 |
 |---|---|---|
