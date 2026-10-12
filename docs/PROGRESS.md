@@ -48,7 +48,7 @@
 |---|---|---|---|---|
 | a | Android 13 Flutter 오버레이 (10/18) | debug APK로 S20에서 Kakao·Meet 통화 화면 위에 버블이 10분 동안 유지된다. **오버레이 패키지명·버전을 pub.dev와 `pubspec.lock`으로 실제 확인해 기록**한다. `SYSTEM_ALERT_WINDOW` 권한 요청 흐름을 확인한다. Wi-Fi RSSI를 읽을 수 있고 필요한 권한을 기록한다. Wi-Fi 패널·인터넷 연결 패널이 열린다. 노트북 WS 연결 경로(LAN 또는 `adb reverse`)를 정한다 | Flutter 3.41.4 stable 설치 확인 (10/12). 나머지 미확인 | ⬜ |
 | b | `app_filter`로 오버레이 트래픽 제외 ☎ | Kakao 통화 중 `app_filter`=Kakao 패키지, 오버레이 WS 연결 상태로 2분 캡처한다. pcap에서 노트북 WS 포트(8000) 패킷 = **0개**이고, Kakao 패킷 수는 필터가 없을 때와 비슷하다 | | ⬜ |
-| 0 | 도구 설치 (Wireshark+Npcap, scrcpy, PCAPdroid, Clumsy) | 버전 출력, `adb devices`에 S20 | 노트북에 tshark·scrcpy 없음 (10/12 확인) | ⬜ |
+| 0 | 도구 설치 (Wireshark+Npcap, scrcpy, PCAPdroid, Clumsy) | 버전 출력, `adb devices`에 S20 | 10/13 winget 설치: tshark 4.6.9 ✅, Npcap 1.89 실행 중 ✅ (`tshark -D`에 Wi-Fi 등 인터페이스 표시), scrcpy 4.1 ✅, Clumsy 0.3 ✅. 남은 것: PCAPdroid(폰), `adb devices`에 S20 (폰 연결 필요). 경로·되돌리기는 `CLAUDE.local.md` | 🟡 |
 | 1 | vcaml 팀 repo 재현 | `pytest vcaml/tests` 50 passed + FPS×ip-udp-ml MAE 솔로(Meet 1.33/Teams 1.81/Webex 1.33) ±0.05 | 50 passed ✅. 학습(약 16분)은 여유 RAM 1.9GB라 보류 — Chrome 종료 후 실행 | 🟡 |
 | 2 | 1 tick 추론 예산 | p95 < 200 ms, 모델 메모리 < 500 MB, 버전 경고 없음 | 솔로 `model_meet.pkl`(FPS cv_1): 로드 5.5s, +112MB, 경고 없음, 45 윈도우 p50 24.6 / **p95 74.7** / max 113.7 ms. 단일 지표 기준 — 4지표 동시는 미측정 | ✅ |
 | 3 | PCAPdroid pcap 파싱 ☎ | linktype RAW(101), CSV `ip.*/udp.*` 채워짐, `readIpUdpFile` ≠ None | | ⬜ |
