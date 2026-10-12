@@ -8,7 +8,8 @@
 3. 스트리밍 feature(server/features.py) → 진단(server/diagnosis.py) → 윈도우별 정답 라벨과 비교.
 4. 통화를 짝/홀로 나눠 dev(규칙 조정용) / test(보고용)로 쓴다.
 
-실행: uv run python scripts/diag_synth.py [--vca meet] [--split test] [--out data/diag/]
+실행: uv run python scripts/diag_synth.py [--vca meet] [--split test] [--rtp] [--out data/diag/]
+재채점: uv run python scripts/diag_synth.py --rescore data/diag/test/windows_meet_test_rtp.csv [--rtp] --out <폴더>
 """
 import argparse
 import json
@@ -120,9 +121,9 @@ def run_call(csv, vca, params, seed, use_rtp=False):
     out = []
 
     def judge(w):
-        loss = sl.take() if use_rtp else None
-        cause, conf = diag.update(w.iloc[0], seq_loss=loss)
-        out.append((w, cause, conf, dict(diag.last_signals)))
+        loss = sl.take()
+        cause, conf = diag.update(w.iloc[0], seq_loss=loss if use_rtp else None)
+        out.append((w, cause, conf, dict(diag.last_signals, seq_loss_obs=loss)))
         diag.last_signals = {}
 
     for e, r, s, ss, sq in zip(epoch2, rel2, size2, ssrc2, seq2):
@@ -141,13 +142,75 @@ def run_call(csv, vca, params, seed, use_rtp=False):
     return pd.DataFrame(rows), params.get("bw_kbps")
 
 
+def summarize(res, vca, split, mode, n_calls, out_dir):
+    # 진단기가 실제로 판정한 윈도우만 채점 (기준선 준비 전 윈도우는 제외 → 'none' 부풀림 방지)
+    scored = res[(res["truth"] != "skip") & (res["cond"] != DELAY_ONLY[1]) & res["r_bytes"].notna()]
+    cm = pd.crosstab(scored["truth"], scored["pred"]).reindex(index=CAUSES, columns=CAUSES, fill_value=0)
+    cm = cm.loc[[c for c in CAUSES if c != "weak_wifi"], [c for c in CAUSES if c != "weak_wifi"]]
+    prec = {c: cm.at[c, c] / cm[c].sum() if cm[c].sum() else float("nan") for c in cm.columns}
+    rec = {c: cm.at[c, c] / cm.loc[c].sum() if cm.loc[c].sum() else float("nan") for c in cm.index}
+    acc = np.trace(cm.values) / cm.values.sum()
+
+    imp = res[(res["et_rel"] > 0) & (res["cond"] != "none")]
+    per_cond = (res[res["truth"] == res["cond_label"]].groupby("cond")
+                .apply(lambda g: (g["pred"] == g["cond_label"]).mean(), include_groups=False))
+    # 판정 지연: 손상 시작 후 처음으로 맞힌 윈도우까지 걸린 시간(초)
+    lat = (imp[imp["pred"] == imp["cond_label"]].groupby(["cond", "call"])["et_rel"].min()
+           .groupby("cond").median())
+    delay_only = res[(res["cond"] == DELAY_ONLY[1]) & (res["et_rel"] > SETTLE_S)]
+
+    summary = {
+        "vca": vca, "split": split, "mode": mode, "calls": n_calls, "windows_scored": int(len(scored)),
+        "accuracy": round(float(acc), 3),
+        "precision": {k: round(float(v), 3) for k, v in prec.items()},
+        "recall": {k: round(float(v), 3) for k, v in rec.items()},
+        "recall_by_condition": {k: round(float(v), 3) for k, v in per_cond.items()},
+        "median_detect_s": {k: round(float(v), 1) for k, v in lat.items()},
+        "delay_only_pred_share": delay_only["pred"].value_counts(normalize=True).round(3).to_dict(),
+        "confusion_matrix": cm.to_dict(orient="index"),
+    }
+    Path(out_dir).mkdir(parents=True, exist_ok=True)
+    (Path(out_dir) / f"summary_{vca}_{split}_{mode}.json").write_text(json.dumps(summary, indent=1))
+    print(cm.to_string())
+    print(json.dumps({k: v for k, v in summary.items() if k != "confusion_matrix"}, indent=1))
+    return summary
+
+
+def rescore(csv, use_rtp, out_dir):
+    """저장된 윈도우 feature로 진단만 다시 돌린다 (손상·feature 재계산 없음 → 규칙 조정이 빠름)."""
+    res = pd.read_csv(csv)
+    vca, split = Path(csv).stem.split("_")[1:3]
+    if "seq_loss_obs" not in res:          # 옛 형식: --rtp로 만든 CSV에만 seq_loss가 있다
+        res["seq_loss_obs"] = res.get("seq_loss")
+    sig_cols = [c for c in res.columns if c.startswith(("r_", "d_")) or c == "seq_loss"]
+    res = res.drop(columns=sig_cols)
+    rows = []
+    for _, g in res.sort_values(["call", "cond", "et_rel"]).groupby(["call", "cond"], sort=False):
+        d = Diagnoser()
+        for i, r in g.iterrows():
+            sl = r["seq_loss_obs"] if use_rtp and pd.notna(r.get("seq_loss_obs")) else None
+            cause, conf = d.update(r, seq_loss=sl)
+            rows.append({"_i": i, "pred": cause, "conf": conf, **d.last_signals})
+            d.last_signals = {}
+    new = pd.DataFrame(rows).set_index("_i")
+    res = res.drop(columns=["pred", "conf"]).join(new)
+    mode = "rtp" if use_rtp else "ipudp"
+    Path(out_dir).mkdir(parents=True, exist_ok=True)
+    res.to_csv(Path(out_dir) / f"windows_{vca}_{split}_{mode}.csv", index=False)
+    return summarize(res, vca, split, mode, res["call"].nunique(), out_dir)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--vca", default="meet")
     ap.add_argument("--split", default="test", choices=["dev", "test", "all"])
     ap.add_argument("--out", default="data/diag")
     ap.add_argument("--rtp", action="store_true", help="RTP 순번 손실률을 진단 신호로 사용")
+    ap.add_argument("--rescore", help="저장된 windows_*.csv로 진단만 다시 채점")
     a = ap.parse_args()
+    if a.rescore:
+        rescore(a.rescore, a.rtp, a.out)
+        return
 
     calls = clean_calls(a.vca)
     if a.split != "all":
@@ -170,36 +233,7 @@ def main():
     Path(a.out).mkdir(parents=True, exist_ok=True)
     res.to_csv(Path(a.out) / f"windows_{a.vca}_{a.split}_{mode}.csv", index=False)
 
-    # 진단기가 실제로 판정한 윈도우만 채점 (기준선 준비 전 윈도우는 제외 → 'none' 부풀림 방지)
-    scored = res[(res["truth"] != "skip") & (res["cond"] != DELAY_ONLY[1]) & res["r_bytes"].notna()]
-    cm = pd.crosstab(scored["truth"], scored["pred"]).reindex(index=CAUSES, columns=CAUSES, fill_value=0)
-    cm = cm.loc[[c for c in CAUSES if c != "weak_wifi"], [c for c in CAUSES if c != "weak_wifi"]]
-    prec = {c: cm.at[c, c] / cm[c].sum() if cm[c].sum() else float("nan") for c in cm.columns}
-    rec = {c: cm.at[c, c] / cm.loc[c].sum() if cm.loc[c].sum() else float("nan") for c in cm.index}
-    acc = np.trace(cm.values) / cm.values.sum()
-
-    imp = res[(res["et_rel"] > 0) & (res["cond"] != "none")]
-    per_cond = (res[res["truth"] == res["cond_label"]].groupby("cond")
-                .apply(lambda g: (g["pred"] == g["cond_label"]).mean(), include_groups=False))
-    # 판정 지연: 손상 시작 후 처음으로 맞힌 윈도우까지 걸린 시간(초)
-    lat = (imp[imp["pred"] == imp["cond_label"]].groupby(["cond", "call"])["et_rel"].min()
-           .groupby("cond").median())
-    delay_only = res[(res["cond"] == DELAY_ONLY[1]) & (res["et_rel"] > SETTLE_S)]
-
-    summary = {
-        "vca": a.vca, "split": a.split, "mode": mode, "calls": len(calls), "windows_scored": int(len(scored)),
-        "accuracy": round(float(acc), 3),
-        "precision": {k: round(float(v), 3) for k, v in prec.items()},
-        "recall": {k: round(float(v), 3) for k, v in rec.items()},
-        "recall_by_condition": {k: round(float(v), 3) for k, v in per_cond.items()},
-        "median_detect_s": {k: round(float(v), 1) for k, v in lat.items()},
-        "delay_only_pred_share": delay_only["pred"].value_counts(normalize=True).round(3).to_dict(),
-        "confusion_matrix": cm.to_dict(orient="index"),
-    }
-    (Path(a.out) / f"summary_{a.vca}_{a.split}_{mode}.json").write_text(json.dumps(summary, indent=1))
-    print(cm.to_string())
-    print(json.dumps({k: v for k, v in summary.items() if k != "confusion_matrix"}, indent=1))
-
+    summarize(res, a.vca, a.split, mode, len(calls), a.out)
 
 if __name__ == "__main__":
     main()

@@ -82,7 +82,9 @@ def run(calls, models, whatif=None):
                     preds.append(row)
                     acc = 0.0
     c = np.array(costs)
-    return {"ticks": len(c), "p50_ms": round(float(np.percentile(c, 50)), 1),
+    suspended = int((c > 60_000).sum())   # 노트북 절전(Modern Standby)이 끼면 tick 하나가 몇 시간이 된다
+    c = c[c <= 60_000]
+    return {"ticks": len(c), "excluded_suspend": suspended, "p50_ms": round(float(np.percentile(c, 50)), 1),
             "p95_ms": round(float(np.percentile(c, 95)), 1), "max_ms": round(float(c.max()), 1),
             "pred_median": {m: round(float(np.median([p[m] for p in preds])), 1) for m in METRICS}}
 

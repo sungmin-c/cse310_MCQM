@@ -85,6 +85,31 @@ def test_impaired_windows_do_not_poison_baseline():
     assert cause == "bandwidth"
 
 
+def test_bitrate_rampup_updates_baseline():
+    """Teams처럼 영상 시작 후 비트레이트가 몇 배로 오르는 것은 저하가 아니다 → 기준선이 따라가야 한다."""
+    d = Diagnoser()
+    warm(d)
+    high = dict(BASE, l_num_bytes=80000, l_num_pkts=120)
+    for _ in range(25):
+        d.update(high)
+    # 이제 기준선이 high → 20% 감소는 bandwidth/loss 신호가 아니어야 하고, 원래 BASE로 떨어지면 감지돼야 함
+    assert d.update(dict(high, l_num_bytes=76000))[0] == "none"
+    assert run(d, dict(BASE, t_q1=45.0))[0] == "bandwidth"
+
+
+def test_jitter_ratio_rule_for_small_q1_apps():
+    """q1이 원래 1ms 남짓인 앱: q1이 0으로 붕괴 + 최대 간격 크게 증가 → 지터."""
+    base = dict(BASE, t_q1=1.3, t_q2=1.4, t_std=8.0, t_max=44.0)
+    d = Diagnoser()
+    for _ in range(12):
+        d.update(base)
+    assert run(d, dict(base, t_q1=0.0, t_q2=0.0, t_max=120.0))[0] == "delay_jitter"
+    d2 = Diagnoser()
+    for _ in range(12):
+        d2.update(base)
+    assert run(d2, dict(base, t_q1=0.0, t_q2=0.0, t_max=55.0))[0] == "none"   # 몰림만으론 지터 아님
+
+
 def test_outputs_are_schema_values():
     d = Diagnoser()
     warm(d)
