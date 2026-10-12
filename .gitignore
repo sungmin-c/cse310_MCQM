@@ -1,0 +1,19 @@
+# 대용량 데이터 (data/in_lab_data, data/real_world_data는 솔로 자료로의 junction — 삭제 금지, CLAUDE.md 참고)
+data/
+*.pcap
+*.pcapng
+
+# 개인 설정
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/.headroom_*
+.serena/
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+
+# dashboard
+node_modules/
+dashboard/dist/

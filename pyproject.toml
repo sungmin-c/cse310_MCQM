@@ -1,0 +1,23 @@
+[project]
+name = "mcqm"
+version = "0.1.0"
+description = "Mobile Call Quality Monitor — vcaml 기반 모바일 통화 QoE 실시간 추정"
+requires-python = ">=3.13"
+dependencies = [
+    "vcaml",
+    # 솔로 환경(vcaml uv.lock)과 동일 버전 고정: 솔로 모델 pickle 로드 호환 + 재현 수치 비교
+    "numpy==2.4.6",
+    "pandas==2.3.3",
+    "scikit-learn==1.8.0",
+    "mlflow==3.13.0",
+]
+
+[tool.uv.sources]
+vcaml = { path = "vcaml", editable = true }
+
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
