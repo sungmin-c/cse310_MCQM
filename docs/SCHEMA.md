@@ -122,3 +122,23 @@ v1에 **optional 필드만 추가**한다. 그래서 v1 소비자는 수정 없�
 ### 팀원 확인 요청 사항
 1. 대시보드도 `diagnosis`와 `action.text`를 표시할지(권고 영역을 대체할지), 아니면 `advice`를 계속 쓸지.
 2. v1의 `advice`를 v1.1에서 유지할지. 초안은 하위 호환을 위해 유지한다. 대신 `action.text`와 내용이 같을 수 있다.
+
+---
+
+## v1.2 초안 — 0–100 `qoe`를 지표별 판정으로 대체 (2026-10-13, 팀원 확인 대기)
+이유와 기준 출처는 `docs/PROJECT_SPEC.md` 5절. v1.1 위에 얹는 변경이며 **아직 구현·sample.jsonl 반영 없음**(더미 서버와 계약 테스트는 v1의 `qoe` 그대로).
+
+```json
+{"...v1/v1.1 필드...": "...",
+ "judgement": {"fps": "ok", "bitrate_kbps": "warn", "frame_jitter_ms": "ok", "height": "bad", "overall": "bad"}}
+```
+| 필드 | 타입 | 값 | 설명 |
+|---|---|---|---|
+| `judgement.fps` / `.bitrate_kbps` / `.frame_jitter_ms` / `.height` | string \| null | `ok` \| `warn` \| `bad` | 지표별 판정. 해당 지표가 없으면(예: 음성통화) null |
+| `judgement.overall` | string | `ok` \| `warn` \| `bad` | 가장 나쁜 지표 |
+| `verdict` | string | `passed` \| `failed` | 유지. `overall == "bad"`이면 failed |
+| `qoe` | number \| null | 0–100 | **폐기 예정**. v1.2 확정 전까지 호환용으로 남기고, 확정되면 삭제 |
+
+- 판정 기준값은 M2에서 출처와 함께 정한다. 기준 전까지 값은 "미정"이다.
+- UI는 색만으로 구분하지 않고 `ok/warn/bad` 글자(또는 아이콘)를 함께 쓴다.
+- 변경 규칙 2(필드 삭제)에 해당하므로 확정은 양쪽 승인 후 `sample.jsonl`, 더미 서버, 두 계약 테스트를 같은 PR에서 고친다.

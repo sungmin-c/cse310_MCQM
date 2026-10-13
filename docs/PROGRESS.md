@@ -10,22 +10,24 @@
 | Q3 | 팀원 GitHub 계정명, `main` 보호 | 계정명은 추후 전달. 그때까지 collaborator·브랜치 보호 보류 | ⏳ |
 | Q4 | ☎ 세션 | 다음 주 중 (날짜 미정). M0 #3–9는 그때 실행. Kakao·Zoom 계정 준비 여부는 미확인 | ⏳ |
 | Q5 | Flutter 앱(APK) | **P0 확정, 담당 Sungmin.** 통화 앱 위 오버레이 버블. 추론은 노트북. 상세는 PROJECT_SPEC §1.4 | ✅ |
-| Q6 | `weak_wifi` 판정 근거 | 오버레이 앱이 RSSI를 `device` 메시지로 송신(SCHEMA v1.1 초안). 진단 정확도 실험은 Clumsy 4종(`bandwidth`/`delay_jitter`/`loss`/`none`), `weak_wifi`는 정성 확인 | ✅ |
+| Q6 | `weak_wifi` 판정 근거 | 오버레이 앱이 RSSI를 `device` 메시지로 송신(SCHEMA v1.1 초안). **v5: `weak_wifi`는 정량 평가에서 제외, 정성 확인만** | ✅ |
 | Q7 | 일정 | 발표 12/2, 동결 11/24. M2 11/6, M3 11/13, M4 11/20. M0은 10/19(폰 불필요)·10/23(통화) 분할 | ✅ |
 | Q8 | SCHEMA v1.1 | 초안 작성 완료. **팀원 확인 대기** → M1(10/26)까지 확정 | ⏳ |
-| Q9 | 진단 실험의 `delay_jitter` 라벨 | Clumsy lag(고정 지연)는 수신 trace에 흔적이 없어 진단할 수 없다(M2 선행 작업 발견 1). 지터를 만드는 Clumsy 모듈(throttle 등)을 쓸지, 라벨을 재정의할지는 **M0-7 Clumsy 테스트 때 실측을 보고 결정** | ⏳ |
-| Q10 | 라이브 손상 주입 방법 (M0-7 실패) | 후보: A′ WinDivert `NETWORK_FORWARD` 계층(pydivert 4.x는 지원하나 **WinDivert 문서가 Windows NAT와 함께 쓰지 말라고 경고**, NAT 이후 필터 시험에서 원본이 통과함을 확인 → 가능성 낮음), B gnirehtet(PCAPdroid와 VPN 슬롯 충돌 가능성), C What-if 대체. 노트북 자신의 트래픽엔 Clumsy가 동작함 | ⏳ |
-| Q10-B | gnirehtet 시험 (10/13) | v2.5.1 win64(SHA256 `7f5b1063…` 공식값 일치, 설치 위치는 CLAUDE.local.md). 첫 설치는 `INSTALL_FAILED_VERIFICATION_FAILURE` → 개발자 옵션 'USB를 통해 설치된 앱 확인' 해제 후 설치 성공. relay에 client 연결까지 됐으나(`Client #0 connected`) **USB가 수 초마다 끊겨 터널이 유지되지 않음** → gnirehtet은 VPN으로 모든 트래픽을 USB로 보내므로 끊기면 폰 인터넷 전체가 끊김. **케이블 교체 후 재시험** (scrcpy M0-8과 같은 원인 추정, 미확인). 되돌리기: `adb uninstall com.genymobile.gnirehtet`, 개발자 옵션 원복 | ⏸ |
+| Q9 | 진단 실험의 `delay_jitter` 라벨 | **결정(10/13, v5)**: 고정 지연은 진단 대상이 아님. 진단 정량 평가는 `loss`·`bandwidth`·`none`만. 지터는 합성 결과 보조 보고 | ✅ |
+| Q10 | 라이브 손상 주입 방법 | **결정(10/13, v5): Plan E** — 노트북 브라우저가 Meet 통화 상대, 노트북 송신에 Clumsy(손실·대역폭). 핫스팟 경유 폰 트래픽엔 Clumsy/WinDivert 불가(실측). 핫스팟은 캡처 기준선용. 미검증: 가상 카메라 구성, Clumsy의 Meet 송신 효과 | ✅(검증 대기) |
+| Q10-B | gnirehtet 시험 (10/13) | **폐기(v5)**. USB 연결이 수 초마다 끊겼고 PCAPdroid와 VPN 슬롯 충돌 가능성. 폰의 앱은 설치된 채이며 필요 없으면 `adb uninstall com.genymobile.gnirehtet` | ❌ 폐기 |
+| Q11 | 방향 재설정 (10/13) | 비판적 분석 후 승인: **방향 1(모바일 측정 타당성 검증) + 방향 3 축소(손실·대역폭 원인)**. 방향 2(화면 기반 정답)는 **하루 파일럿**. 0–100 QoE 점수는 **지표별 판정**으로 대체(SCHEMA v1.2 초안). 라이브 데모는 Meet·Kakao 둘 다. 대시보드=팀원(주 3시간, 최소 범위), 버블 UI=Sungmin. Zoom 제외. 루팅 기기 없음 | ✅ |
+| Q12 | SCHEMA v1.2 (지표별 판정) | 초안 작성. **팀원 확인 대기** (v1.1과 함께 M1 10/26까지 확정) | ⏳ |
 
 ## 일정 (발표 12/2, 동결 11/24)
 | 주 | 기간 | 외부 일정 | 마감 | 나 — ML·Python | 나 — Flutter 오버레이 | 팀원 — Web | ☎ 세션 | 상태 |
 |---|---|---|---|---|---|---|---|---|
-| W1 | 10/12–10/18 | | 오버레이 권한 10/18 | bootstrap ✅, M0 폰 불필요 항목(0, 1, 2, 6, 7, 10) | M0 (a): Android 13 오버레이·RSSI·설정 패널 확인 | uv·node 설치, `dashboard/` scaffold(Vite+TS+Tailwind+Chart.js+Vitest), SCHEMA v1·v1.1 리뷰, 더미 스트림 연결 | — | 🟡 |
-| W2 | 10/19–10/25 | **Midterm 1 (10/21)** | M0 10/19 · 10/23 | M0 통화 항목(3, 4, 5, 8, 9, b), M0 보고·범위 재조정, vcaml 재현 수치 | — | WS client(`core/stream.ts`), `parseMessage`+Vitest(sample.jsonl), 배지·게이지·고정 레이아웃 | M0 세션 (학교 1 + 집 1) | ⬜ |
-| W3 | 10/26–11/1 | | M1 10/26 | SCHEMA v1.1 확정·반영, Replay: pcap→윈도우→features→RF→`qoe.py`(+pytest)→FastAPI WS | 버블 UI (sample.jsonl 고정 데이터) | 시계열 차트(30 tick, 임계선), 모드·앱 선택, 경고 배지, 반응형 | — | ⬜ |
-| W4 | 11/2–11/8 | | M2 11/6 · 오버레이 더미 11/8 | 진단 v0 `diagnosis.py`(+pytest), Meet 정답 수집 파이프라인, `impair.py`+pytest | 더미 스트림 연동, [조치] 버튼, RSSI 송신 | 정답 겹침 차트, 진단·조치 표시, fixture 재생 모드 | Meet 정답 수집 | ⬜ |
-| W5 | 11/9–11/15 | | M3 11/13 · 오버레이 Live 11/15 | Live 모드(TCP exporter), 캡처 충실도, 정답 대비 정확도(MAE, ±2fps, P/R/F1, CM) | Live 연동 | What-if 슬라이더 → control 메시지, 접근성 | 충실도 실험 | ⬜ |
-| W6 | 11/16–11/22 | Midterm 2 준비 | M4 11/20 · 문구 11/20 | What-if 연결, Meet·Kakao 교차 실험, **원인 진단 정확도 실험**, 일반화, 결과표, README 초안 | 표시 문구 확정, debug APK | 결과 화면, 정적 데모 빌드 | 교차·진단 실험 (11/16–11/18 집중) | ⬜ |
+| W1 | 10/13–10/19 | | 오버레이 권한 10/18 | **파일럿 3개**: ① 폰 Chrome Meet 참가 + `webrtc-internals` 덤프(정답 경로) ② 노트북 핫스팟 tshark 캡처가 폰 트래픽을 보는지 ③ Plan E(노트북=Meet 상대, Clumsy 손실·대역폭). 이후 **하루: 방향 2 파일럿** | M0-a 마무리(통화 위 10분 유지는 ☎) | uv·node 설치, `dashboard/` scaffold, SCHEMA v1.1·v1.2 리뷰, 더미 스트림 연결 | 노트북이 통화 상대라 팀원 없이도 가능 | 🟡 |
+| W2 | 10/20–10/26 | **Midterm 1 (10/21)** | M0 보고 · M1 10/26 | 시험 주간 경량. pcap→CSV 변환(tshark, 공백 경로 안전), Replay 추론 연결, 지표별 판정 기준 조사(출처 달기) | — | WS client, `parseMessage`+Vitest, 판정 배지·고정 레이아웃 | — | ⬜ |
+| W3 | 10/27–11/2 | | | **E1 충실도**(PCAPdroid vs 핫스팟 tshark 동시 캡처 5통화), `judge.py`(+pytest), Meet 정답 수집 시작 | 버블 UI (sample.jsonl 고정 데이터) | 추정 vs 정답 시계열 차트, 결과표 자리 | E1 · Meet 정답 수집 | ⬜ |
+| W4 | 11/3–11/9 | | M2 11/6 · 오버레이 더미 11/8 | **E2 정확도**(Meet 20통화: 정상 10 + 손상 10) 수집·분석, 데스크톱 모델 vs 폰 데이터 보정, 진단 v0 | 더미 스트림 연동, [조치] 버튼, RSSI 송신 | 진단·조치 표시, fixture 재생 모드 | Meet 정답 수집 | ⬜ |
+| W5 | 11/10–11/16 | | M3 11/13 · 오버레이 Live 11/15 | Live 모드 연결, **E3 진단**(Plan E 손실·대역폭 2조건×5회) | Live 연동 | 정확도·충실도 결과 화면 | E3 · Kakao 교차 | ⬜ |
+| W6 | 11/17–11/23 | Midterm 2 준비 | M4 11/20 · 문구 11/20 | 결과표, Kakao 정성 비교, README 초안, (여유 시) What-if UI | 표시 문구 확정, debug APK | 정적 데모 빌드(최소 대시보드) | 마무리 촬영 | ⬜ |
 | W7 | 11/23–11/29 | **Midterm 2 (11/25)** | **Freeze 11/24** | M5: pytest 정리, 녹화본, 데모 스크립트 → 동결. 리허설 1 (igc_user, [가정] 11/27) | APK 최종 | 동결, 리허설 | 리허설 1 | ⬜ |
 | W8 | 11/30–12/6 | | **Final Demo 12/2** | 리허설 2 ([가정] 12/1), 발표 | | 발표 | 리허설 2 | ⬜ |
 | W9 | 12/7–12/12 | 종료 12/12 | | 최종 보고서 초안(한국어, [가정] 12/12까지) | | | — | ⬜ |
@@ -67,7 +69,7 @@ M0 설계 메모 (M2 `features.py`에 반영):
 - vcaml 배치 윈도우는 "첫 패킷 + 1초 초과 시 새 윈도우"(가변 경계), 스트리밍은 고정 1초 격자 → 작은 차이 가능, M2에서 수치 비교.
 
 ## M1 — 더미 스트림 + 대시보드 뼈대 / vcaml 재현 수치 / SCHEMA v1.1 확정 (마감 10/26)
-## M2 — Replay 실시간 추론 + QoE + 판정 + 진단 v0 / Meet 정답 수집 (마감 11/6)
+## M2 — Replay 실시간 추론 + 지표별 판정 + 진단 v0 / Meet 정답 수집 / 충실도 스크립트 (마감 11/6)
 
 ### 선행 작업 (10/12 밤, 브랜치 `ml/m2-core`, Opus 5.5 xhigh)
 | # | 항목 | 결과 | 상태 |
@@ -135,7 +137,7 @@ v0의 Teams 실패 원인을 **Teams dev**에서 분석했다.
 - 원자료: v0 `data/diag/test/`, v0.1 `data/diag/v01_test/` (`summary_*.json`, `windows_*.csv`, git 제외).
 - 재현: `uv run python scripts/diag_synth.py --vca <vca> --split test --rtp`. 규칙만 바꿨다면 `--rescore data/diag/test/windows_<vca>_test_rtp.csv [--rtp] --out <폴더>`로 몇 초 만에 재채점할 수 있다.
 ## M3 — Live + 캡처 충실도 + 정답 대비 정확도 (마감 11/13)
-## M4 — What-if + Meet·Kakao 교차 실험 + 원인 진단 정확도 + 결과표 (마감 11/20)
+## M4 — Plan E 손상 실험(손실·대역폭) + Meet·Kakao 교차 실험 + 결과표 (마감 11/20)
 ## M5 = Freeze — 테스트, README, 정적 데모, 녹화본, 데모 스크립트 (마감 11/24)
 
 ## Flutter 오버레이 (담당 Sungmin)
@@ -146,12 +148,6 @@ v0의 Teams 실패 원인을 **Teams dev**에서 분석했다.
 | 11/15 | Live 연동 | | ⬜ |
 | 11/20 | 표시 문구 확정 | | ⬜ |
 
-**버블 UI/UX 인계 (10/13 결정, Sungmin → 팀원)**
-- 담당 분리: **버블 화면 디자인·문구·레이아웃 = 팀원**, 빌드·S20 실기기 시험·Android 네이티브(`MainActivity.kt`, 플러그인 수정본) = Sungmin. 오버레이는 Android 전용이라 팀원(Mac·iPhone)은 기기 시험이 불가 → 팀원이 PR을 올리면 Sungmin이 APK를 빌드해 S20에서 확인하고 화면 녹화·스크린샷을 공유.
-- 대상 코드: `overlay/lib/main.dart`의 `Bubble`·`_BubbleState.build` (표시 전용 위젯), 문구는 `overlay/lib/tick.dart`(`causeLine`, `actionLine`). 메시지 형식은 `docs/SCHEMA.md` v1.1 초안.
-- 현재 상태: 폭 340 dp, 크게 200 dp / 작게 72 dp, 제목 줄에 상태색·QoE·판정·추정값·조치·크기·닫기.
-- 알려진 UX 과제:
-  1. 크게 모드에서도 문구가 빽빽함 — 크기·글자 크기·줄 수 재설계
-  2. **좌우 벽 없음**: 플러그인이 버블의 80%까지 화면 밖으로 나가는 것을 허용(`applySoftBoundaryConstraints`의 `minVisibleWidth`). 수정은 한 줄(Sungmin이 네이티브 쪽에서 처리)
-  3. 드래그 감각·시작 위치, 색 대비·접근성(색만으로 상태 구분하지 않기)
-  4. 11/20 문구 확정 마일스톤과 연결
+**버블 UI/UX 담당 (10/13 재결정): Sungmin이 직접 한다.** 어제(10/13 오전) 적은 "팀원 인계"는 취소한다.
+- 이유: 팀원은 주 3시간 정도이고 React 대시보드(최소 범위)에 집중한다. 오버레이는 Android 전용이라 팀원(Mac·iPhone)이 기기 시험을 할 수 없다.
+- 알려진 UX 과제(Sungmin): ① 크게 모드의 문구 밀도 ② 좌우 벽 없음(플러그인 `minVisibleWidth`, 한 줄) ③ 드래그 감각 ④ 색 외 글자로도 상태 구분(접근성) ⑤ 11/20 문구 확정
