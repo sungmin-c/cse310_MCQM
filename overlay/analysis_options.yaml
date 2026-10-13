@@ -1,0 +1,5 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - third_party/**   # 외부 플러그인 수정본 (원본 스타일 유지)

@@ -7,7 +7,8 @@
 vcaml·ML 의존성이 없다. inline 의존성이라 `uv run`이 프로젝트와 격리된 환경에서 실행한다
 (Mac에서도 uv만 있으면 동작, submodule 불필요).
 
-실행: uv run server/dummy_stream.py [--app meet|kakao_video|kakao_voice|zoom] [--mode replay|live|whatif] [--port 8000]
+실행: uv run server/dummy_stream.py [--app meet|kakao_video|kakao_voice|zoom] [--mode replay|live|whatif] [--port 8000] [--host localhost]
+폰 오버레이에서 접속: adb reverse tcp:8000 tcp:8000 후 ws://127.0.0.1:8000/ws (방화벽 변경 불필요)
 접속: ws://localhost:8000/ws  (경로는 보지 않으므로 /ws 외 경로도 동작)
 값은 60초 주기로 정상(0–14s) → 손상(15–44s, 30s에 최악) → 회복을 반복한다. QoE는 가짜 값이다.
 client→server control 메시지는 무시한다 (What-if 연결은 W5).
@@ -67,7 +68,7 @@ def tick(i: int, app: str = "meet", mode: str = "replay", now: float | None = No
     }
 
 
-async def run(app: str, mode: str, port: int) -> None:
+async def run(app: str, mode: str, port: int, host: str = "localhost") -> None:
     from websockets.asyncio.server import serve
     from websockets.exceptions import ConnectionClosed
 
@@ -81,8 +82,8 @@ async def run(app: str, mode: str, port: int) -> None:
         except ConnectionClosed:
             pass
 
-    async with serve(handler, "localhost", port) as server:
-        print(f"dummy stream: ws://localhost:{port}/ws  app={app} mode={mode}  (Ctrl+C로 종료)", flush=True)
+    async with serve(handler, host, port) as server:
+        print(f"dummy stream: ws://{host}:{port}/ws  app={app} mode={mode}  (Ctrl+C로 종료)", flush=True)
         await server.serve_forever()
 
 
@@ -91,8 +92,9 @@ if __name__ == "__main__":
     p.add_argument("--app", default="meet", choices=["meet", "kakao_video", "kakao_voice", "zoom"])
     p.add_argument("--mode", default="replay", choices=["replay", "live", "whatif"])
     p.add_argument("--port", type=int, default=8000)
+    p.add_argument("--host", default="localhost", help="0.0.0.0 = 핫스팟 LAN에서도 접속 (방화벽 허용 필요)")
     a = p.parse_args()
     try:
-        asyncio.run(run(a.app, a.mode, a.port))
+        asyncio.run(run(a.app, a.mode, a.port, a.host))
     except KeyboardInterrupt:
         pass

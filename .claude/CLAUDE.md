@@ -14,6 +14,7 @@
 |---|---|
 | vcaml/, pyproject.toml, uv.lock, server/, capture/, scripts/, tests/, overlay/ (Flutter) | Sungmin (Windows) |
 | dashboard/ | Web (팀원, Mac) |
+| overlay/lib/ 버블 UI·문구 (`Bubble` 위젯, `tick.dart` 문구) | 팀원 (10/13 인계). 빌드·S20 실기기 시험·Android 네이티브는 Sungmin |
 | docs/SCHEMA.md, docs/schema/, docs/PROGRESS.md, docs/PROJECT_SPEC.md, README.md, .claude/CLAUDE.md, .gitignore | 공동 — 둘 다 승인 |
 - 브랜치: main은 PR로만. 작업은 `ml/<주제>`, `web/<주제>`, `docs/<주제>`. 짧게 유지, squash merge
 - **data/in_lab_data, data/real_world_data는 솔로 자료로의 junction이다. 안에서 파일을 지우거나 쓰지 말 것. 링크 제거는 `cmd /c rmdir`만**

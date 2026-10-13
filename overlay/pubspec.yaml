@@ -1,0 +1,21 @@
+name: mcqm_overlay
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.11.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_overlay_window:
+    path: third_party/flutter_overlay_window  # 드래그 경계 버그 수정본, third_party/.../MCQM_PATCH.md
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

@@ -48,7 +48,7 @@
 ## M0 — 검증 스파이크 (마감: 폰 불필요 항목 10/19, ☎ 항목 10/23, 오버레이 권한 10/18)
 | # | 항목 | 성공 기준 | 결과 | 상태 |
 |---|---|---|---|---|
-| a | Android 13 Flutter 오버레이 (10/18) | debug APK로 S20에서 Kakao·Meet 통화 화면 위에 버블이 10분 동안 유지된다. **오버레이 패키지명·버전을 pub.dev와 `pubspec.lock`으로 실제 확인해 기록**한다. `SYSTEM_ALERT_WINDOW` 권한 요청 흐름을 확인한다. Wi-Fi RSSI를 읽을 수 있고 필요한 권한을 기록한다. Wi-Fi 패널·인터넷 연결 패널이 열린다. 노트북 WS 연결 경로(LAN 또는 `adb reverse`)를 정한다 | Flutter 3.41.4 stable 설치 확인 (10/12). 나머지 미확인 | ⬜ |
+| a | Android 13 Flutter 오버레이 (10/18) | debug APK로 S20에서 Kakao·Meet 통화 화면 위에 버블이 10분 동안 유지된다. **오버레이 패키지명·버전을 pub.dev와 `pubspec.lock`으로 실제 확인해 기록**한다. `SYSTEM_ALERT_WINDOW` 권한 요청 흐름을 확인한다. Wi-Fi RSSI를 읽을 수 있고 필요한 권한을 기록한다. Wi-Fi 패널·인터넷 연결 패널이 열린다. 노트북 WS 연결 경로(LAN 또는 `adb reverse`)를 정한다 | **10/13 스파이크 (`overlay/`, 브랜치 `ml/overlay-spike`)**: Flutter 3.41.4, 패키지 **`flutter_overlay_window` 1.0.0**(pub.dev, iheb.tech, MIT). 다른 앱 위 버블 ✅, 권한 요청 흐름 ✅(`SYSTEM_ALERT_WINDOW`, 알림 권한), 더미 스트림 WS 수신 ✅(경로: **무선 adb + `adb reverse tcp:8000`** → 방화벽 변경 불필요), Wi-Fi·인터넷 설정 패널 ✅(`Settings.Panel`), [조치] 버튼 → 패널 ✅, 크기 작게/크게·닫기 버튼 ✅, **RSSI ✅**: `NetworkCapabilities.getSignalStrength()` + `ACCESS_NETWORK_STATE`(위치 권한 불필요. `WifiManager.connectionInfo`는 Android 13에서 위치 권한 없이 가려져 null). 발견한 플러그인 버그: ① 시작 위치를 안 주면 화면 위로 사라짐 ② 이미 떠 있을 때 다시 show하면 서비스가 멈춤 ③ 드래그 경계 계산 오류 → `overlay/third_party/flutter_overlay_window`(MIT 수정본, `MCQM_PATCH.md`)에서 ③ 수정, ①② 앱 쪽 우회. 남은 것: **Kakao·Meet 통화 위 10분 유지(☎)**, 버블 UI/UX 다듬기(→ 팀원 인계, 아래) | 🟡 |
 | b | `app_filter`로 오버레이 트래픽 제외 ☎ | Kakao 통화 중 `app_filter`=Kakao 패키지, 오버레이 WS 연결 상태로 2분 캡처한다. pcap에서 노트북 WS 포트(8000) 패킷 = **0개**이고, Kakao 패킷 수는 필터가 없을 때와 비슷하다 | | ⬜ |
 | 0 | 도구 설치 (Wireshark+Npcap, scrcpy, PCAPdroid, Clumsy) | 버전 출력, `adb devices`에 S20 | 10/13 winget 설치: tshark 4.6.9 ✅, Npcap 1.89 실행 중 ✅ (`tshark -D`에 Wi-Fi 등 인터페이스 표시), scrcpy 4.1 ✅, Clumsy 0.3 ✅. 남은 것: PCAPdroid(폰), `adb devices`에 S20 (폰 연결 필요). 경로·되돌리기는 `CLAUDE.local.md` | 🟡 |
 | 1 | vcaml 팀 repo 재현 | `pytest vcaml/tests` 50 passed + FPS×ip-udp-ml MAE 솔로(Meet 1.33/Teams 1.81/Webex 1.33) ±0.05 | 50 passed ✅. 10/13 학습 재현 (약 13분, 팀 repo `data/mlruns.db`): **Meet 1.334 / Teams 1.812 / Webex 1.328** (솔로와 차이 +0.004 / +0.002 / −0.002, 3개 평균 1.491, 논문 1.50). 학습 중 절전을 임시로 껐다가 복원. 솔로 DB 해시 불변 | ✅ |
@@ -141,7 +141,17 @@ v0의 Teams 실패 원인을 **Teams dev**에서 분석했다.
 ## Flutter 오버레이 (담당 Sungmin)
 | 기한 | 내용 | 결과 | 상태 |
 |---|---|---|---|
-| 10/18 | Android 13 오버레이 권한·표시 확인 (= M0 a) | | ⬜ |
+| 10/18 | Android 13 오버레이 권한·표시 확인 (= M0 a) | 10/13 기능 확인 완료(위 M0-a). 통화 위 10분 유지만 ☎ 세션에서 | 🟡 |
 | 11/8 | 더미 스트림 연동 | | ⬜ |
 | 11/15 | Live 연동 | | ⬜ |
 | 11/20 | 표시 문구 확정 | | ⬜ |
+
+**버블 UI/UX 인계 (10/13 결정, Sungmin → 팀원)**
+- 담당 분리: **버블 화면 디자인·문구·레이아웃 = 팀원**, 빌드·S20 실기기 시험·Android 네이티브(`MainActivity.kt`, 플러그인 수정본) = Sungmin. 오버레이는 Android 전용이라 팀원(Mac·iPhone)은 기기 시험이 불가 → 팀원이 PR을 올리면 Sungmin이 APK를 빌드해 S20에서 확인하고 화면 녹화·스크린샷을 공유.
+- 대상 코드: `overlay/lib/main.dart`의 `Bubble`·`_BubbleState.build` (표시 전용 위젯), 문구는 `overlay/lib/tick.dart`(`causeLine`, `actionLine`). 메시지 형식은 `docs/SCHEMA.md` v1.1 초안.
+- 현재 상태: 폭 340 dp, 크게 200 dp / 작게 72 dp, 제목 줄에 상태색·QoE·판정·추정값·조치·크기·닫기.
+- 알려진 UX 과제:
+  1. 크게 모드에서도 문구가 빽빽함 — 크기·글자 크기·줄 수 재설계
+  2. **좌우 벽 없음**: 플러그인이 버블의 80%까지 화면 밖으로 나가는 것을 허용(`applySoftBoundaryConstraints`의 `minVisibleWidth`). 수정은 한 줄(Sungmin이 네이티브 쪽에서 처리)
+  3. 드래그 감각·시작 위치, 색 대비·접근성(색만으로 상태 구분하지 않기)
+  4. 11/20 문구 확정 마일스톤과 연결
