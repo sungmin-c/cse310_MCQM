@@ -15,6 +15,7 @@
 | Q8 | SCHEMA v1.1 | 초안 작성 완료. **팀원 확인 대기** → M1(10/26)까지 확정 | ⏳ |
 | Q9 | 진단 실험의 `delay_jitter` 라벨 | Clumsy lag(고정 지연)는 수신 trace에 흔적이 없어 진단할 수 없다(M2 선행 작업 발견 1). 지터를 만드는 Clumsy 모듈(throttle 등)을 쓸지, 라벨을 재정의할지는 **M0-7 Clumsy 테스트 때 실측을 보고 결정** | ⏳ |
 | Q10 | 라이브 손상 주입 방법 (M0-7 실패) | 후보: A′ WinDivert `NETWORK_FORWARD` 계층(pydivert 4.x는 지원하나 **WinDivert 문서가 Windows NAT와 함께 쓰지 말라고 경고**, NAT 이후 필터 시험에서 원본이 통과함을 확인 → 가능성 낮음), B gnirehtet(PCAPdroid와 VPN 슬롯 충돌 가능성), C What-if 대체. 노트북 자신의 트래픽엔 Clumsy가 동작함 | ⏳ |
+| Q10-B | gnirehtet 시험 (10/13) | v2.5.1 win64(SHA256 `7f5b1063…` 공식값 일치, 설치 위치는 CLAUDE.local.md). 첫 설치는 `INSTALL_FAILED_VERIFICATION_FAILURE` → 개발자 옵션 'USB를 통해 설치된 앱 확인' 해제 후 설치 성공. relay에 client 연결까지 됐으나(`Client #0 connected`) **USB가 수 초마다 끊겨 터널이 유지되지 않음** → gnirehtet은 VPN으로 모든 트래픽을 USB로 보내므로 끊기면 폰 인터넷 전체가 끊김. **케이블 교체 후 재시험** (scrcpy M0-8과 같은 원인 추정, 미확인). 되돌리기: `adb uninstall com.genymobile.gnirehtet`, 개발자 옵션 원복 | ⏸ |
 
 ## 일정 (발표 12/2, 동결 11/24)
 | 주 | 기간 | 외부 일정 | 마감 | 나 — ML·Python | 나 — Flutter 오버레이 | 팀원 — Web | ☎ 세션 | 상태 |
