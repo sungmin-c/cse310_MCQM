@@ -56,7 +56,7 @@
 | 5 | PCAPdroid → 노트북 스트리밍 ☎ | 10분 무단절, 수신 ≥ 99%, 지연 p95 < 500 ms | | ⬜ |
 | 6 | 핫스팟 baseline (igc_user + 집) | A 직결 / B 핫스팟 / C 노트북에서 speedtest·ping을 측정한다(W1, 통화 불필요). 기준[가정]: B 다운·업 ≥ 5 Mbps, RTT 증가 ≤ 20 ms, 손실 ≤ 1%. B 경로로 2분 Meet 무끊김은 ☎ 세션 때 확인한다 | | ⬜ |
 | 7 | Clumsy 중계 트래픽 적용 | Drop 10% → ping 손실 10±3%. Lag 100 → RTT +100±15 ms. **Bandwidth 500 kbps → speedtest ≤ 550 kbps**. 통화 중 화면 저하는 ☎ 세션 때 육안으로 확인한다. 세 모듈은 진단 정확도 실험의 라벨 소스다 | | ⬜ |
-| 8 | scrcpy ☎ | ≥ 30 fps, PCAPdroid와 동시 동작, 통화 화면 검지 않음(FLAG_SECURE) | | ⬜ |
+| 8 | scrcpy ☎ | ≥ 30 fps, PCAPdroid와 동시 동작, 통화 화면 검지 않음(FLAG_SECURE) | **보류**. 증상=기본 코덱에서 연결 끊김("Device disconnected"), 원인 미확정. 케이블 도착 후 재시도. (10/13 관찰: adb 상태가 `offline`↔`device`로 한 번 흔들림 → 케이블·포트 문제 가능성, 미확인) | ⏸ |
 | 9 | 폰 Chrome getStats ☎ | 가능 여부 먼저 보고. 2분간 inbound video 지표 ≥ 95% 초 존재 | | ⬜ |
 | 10 | 노트북 측 캡처 | `tshark -D`에 핫스팟 인터페이스, 폰 IP 필터로 캡처 | | ⬜ |
 
