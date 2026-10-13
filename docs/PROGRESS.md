@@ -1,5 +1,5 @@
 # PROGRESS — MCQM
-> 마일스톤마다 완료/미완료/검증 결과를 갱신한다. 상태: ⬜ 예정 · 🟡 진행 · ✅ 완료 · ❌ 실패/보류
+> 마일스톤마다 완료/미완료/검증 결과를 갱신한다. 상태: ⬜ 예정 · 🟡 진행 · ✅ 완료 · ⏸ 보류 · ❌ 실패
 > ☎ = 팀원 iPhone 통화 세션 필요. 원자료는 `data/m0/` 등 `data/` 아래 (git 제외)
 
 ## 결정 사항 / 대기
@@ -51,9 +51,9 @@
 | 0 | 도구 설치 (Wireshark+Npcap, scrcpy, PCAPdroid, Clumsy) | 버전 출력, `adb devices`에 S20 | 10/13 winget 설치: tshark 4.6.9 ✅, Npcap 1.89 실행 중 ✅ (`tshark -D`에 Wi-Fi 등 인터페이스 표시), scrcpy 4.1 ✅, Clumsy 0.3 ✅. 남은 것: PCAPdroid(폰), `adb devices`에 S20 (폰 연결 필요). 경로·되돌리기는 `CLAUDE.local.md` | 🟡 |
 | 1 | vcaml 팀 repo 재현 | `pytest vcaml/tests` 50 passed + FPS×ip-udp-ml MAE 솔로(Meet 1.33/Teams 1.81/Webex 1.33) ±0.05 | 50 passed ✅. 10/13 학습 재현 (약 13분, 팀 repo `data/mlruns.db`): **Meet 1.334 / Teams 1.812 / Webex 1.328** (솔로와 차이 +0.004 / +0.002 / −0.002, 3개 평균 1.491, 논문 1.50). 학습 중 절전을 임시로 껐다가 복원. 솔로 DB 해시 불변 | ✅ |
 | 2 | 1 tick 추론 예산 | p95 < 200 ms, 모델 메모리 < 500 MB, 버전 경고 없음 | 솔로 `model_meet.pkl`(FPS cv_1): 로드 5.5s, +112MB, 경고 없음, 45 윈도우 p50 24.6 / **p95 74.7** / max 113.7 ms. 단일 지표 기준 — 4지표 동시는 미측정 | ✅ |
-| 3 | PCAPdroid pcap 파싱 ☎ | linktype RAW(101), CSV `ip.*/udp.*` 채워짐, `readIpUdpFile` ≠ None | | ⬜ |
+| 3 | PCAPdroid pcap 파싱 ☎ | linktype RAW(101), CSV `ip.*/udp.*` 채워짐, `readIpUdpFile` ≠ None | linktype **101 확인** ✅ (UDP exporter 헤더, extensions 끔). 폰 주소는 Wi-Fi IP(192.168.137.60)가 아니라 **PCAPdroid VPN 주소 `10.215.173.1`**로 기록됨 → 수신 dst 선택·캡처 충실도 비교(노트북 쪽은 192.168.137.60) 때 주소 대응 필요. VPN MTU 10000이라 TCP는 최대 7,151 B로 기록(UDP는 최대 1,278 B로 정상). tshark CSV 변환·`readIpUdpFile`은 통화 pcap으로 남음 | 🟡 |
 | 4 | Kakao 트래픽 분석 ☎ (Zoom은 여유 시) | UDP/TCP 비율, 상위 flow, 크기 분포(>306B), RTP 여부, ip-udp-ml 입력 조건 예/아니오 | | ⬜ |
-| 5 | PCAPdroid → 노트북 스트리밍 ☎ | 10분 무단절, 수신 ≥ 99%, 지연 p95 < 500 ms | | ⬜ |
+| 5 | PCAPdroid → 노트북 스트리밍 ☎ | 10분 무단절, 수신 ≥ 99%, 지연 p95 < 500 ms | 10/13 UDP exporter(PCAPdroid v2.0.2 → 노트북 핫스팟 `192.168.137.1:1234`, `capture/pcapdroid_rx.py`). **수신률 ≥ 99.6%(실제로는 100%)**: YouTube 3.7분, 30,462개·35.1 MB. 앱 Connections #8(QUIC)과 패킷 수(27,148/2,452)·바이트(33.0 MiB/232.7 KiB)·first/last seen이 ms까지 일치. 형식 오류 0, 순서 뒤바뀜 ≤ 3. 10분 연속 연결 유지(1차, 저부하) ✅. **지연: p50 96 ms, p95 1.1 s → 기준 미달이지만 원인은 PCAPdroid의 1초 묶음 전송**(`pcap_dump.c` `MAX_PCAP_DUMP_DELAY_MS 1000`, 묶음 내 최신 패킷은 약 47 ms). 기준을 'p95 < 2.5 s'(대시보드 약 2초 지연)로 바꾸는 안 제안. TCP exporter 비교는 미실시 | 🟡 |
 | 6 | 핫스팟 baseline (igc_user + 집) | A 직결 / B 핫스팟 / C 노트북에서 speedtest·ping을 측정한다(W1, 통화 불필요). 기준[가정]: B 다운·업 ≥ 5 Mbps, RTT 증가 ≤ 20 ms, 손실 ≤ 1%. B 경로로 2분 Meet 무끊김은 ☎ 세션 때 확인한다 | | ⬜ |
 | 7 | Clumsy 중계 트래픽 적용 | Drop 10% → ping 손실 10±3%. Lag 100 → RTT +100±15 ms. **Bandwidth 500 kbps → speedtest ≤ 550 kbps**. 통화 중 화면 저하는 ☎ 세션 때 육안으로 확인한다. 세 모듈은 진단 정확도 실험의 라벨 소스다 | | ⬜ |
 | 8 | scrcpy ☎ | ≥ 30 fps, PCAPdroid와 동시 동작, 통화 화면 검지 않음(FLAG_SECURE) | **보류**. 증상=기본 코덱에서 연결 끊김("Device disconnected"), 원인 미확정. 케이블 도착 후 재시도. (10/13 관찰: adb 상태가 `offline`↔`device`로 한 번 흔들림 → 케이블·포트 문제 가능성, 미확인) | ⏸ |
