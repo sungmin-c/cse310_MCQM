@@ -1,177 +1,128 @@
-# Task: Mobile Call Quality Monitor — 폰 실측 기반 실시간 QoE 추정 + What-if Lab (CSE310 Final, vcaml 기반)
+# Task: Desktop Call Quality Monitor — 네트워크 vs 기기 원인 진단 + 실시간 추정 (CSE310 Final, vcaml 기반)
 
-Claude Code의 첫 메시지로 이 문서 전체를 붙여넣는다.
-
-> **v5 (2026-10-13)**: 방향 재설정(비판적 분석 후 승인) — 핵심을 "모바일 측정 타당성 검증"으로 좁힘, QoE 0–100 점수를 **지표별 판정**으로 대체, 라이브 손상은 Plan E(노트북을 Meet 통화 상대로), 대시보드 담당 팀원·버블 UI 담당 Sungmin, 방향 2(화면 기반 정답)는 하루 파일럿. 상세 이유는 `docs/PROGRESS.md`의 "방향 재설정".
-> **v4 (2026-10-12)**: Flutter 오버레이 앱 P0 확정, 원인 진단(diagnosis·action) 추가, 앱 비교를 Meet·Kakao로 축소, 일정 변경(동결 11/24, 발표 12/2). 진행 기록은 `docs/PROGRESS.md`, 메시지 계약은 `docs/SCHEMA.md`.
-
-## MODE
-**Plan mode로 시작한다.** 계획을 승인받기 전에는 애플리케이션 코드를 작성하지 않는다.
-1. 아래 참고 자료와 repo를 직접 읽는다.
-2. 진행을 막는 질문을 최대 5개까지 한 번에 묻는다.
-3. 계획을 제시한다: 파일 트리, 데이터 흐름, 공식, 리스크, 마일스톤. 모든 가정에는 `[가정]` 표시를 붙인다.
+> **v6 (2026-10-14)**: 교수님 면담 결과 반영 — **데스크톱(Windows) 우선**, 12/2까지 데스크톱 MVP 구현·검증, **Android는 설계와 실현 가능성 분석까지만**(구현 없음), 측정 대상은 Windows의 **Google Meet·Zoom**, 최종 화면은 **웹 대시보드**(네이티브 앱 없음). v5(모바일 측정 타당성)는 폐기하지 않고 Android 설계의 실측 근거로 보관한다. 계획 근거는 `docs/PROGRESS.md`의 "방향 재설정 v6".
+> v5 (10/13), v4 (10/12) 이력은 git log와 `docs/PROGRESS.md`에 있다. 메시지 계약은 `docs/SCHEMA.md`.
 
 ## 팀과 제약
 - 2인 팀, 마감은 **2026-12-02 Final Demo**(기능 동결 **11/24**), 발표는 **약 12분**이다.
-  - **Sungmin** (Windows, Galaxy S20): Python·ML 백엔드, Flutter 오버레이 앱.
-  - **팀원** (Mac, iPhone): React 대시보드. **Python·ML 코드는 거의 다루지 못한다.**
-  - 그래서 모든 단계에 "실행 방법과 확인 방법"을 한국어로 짧게 붙이고, 명령은 OS 중립(`uv run`, `npm --prefix`)으로 쓴다.
+  - **Sungmin** (Windows): Python·ML 백엔드, 캡처, 실험, Android 설계 문서.
+  - **팀원** (Mac): React 대시보드. **Python·ML 코드는 거의 다루지 못한다.**
+  - 모든 단계에 "실행 방법과 확인 방법"을 한국어로 짧게 붙이고, 명령은 OS 중립(`uv run`, `npm --prefix`)으로 쓴다.
   - 설명은 한국어로 쓰고, 코드·명령어·기술 용어는 영어 그대로 둔다.
 - 노트북: Windows 11, Core Ultra 5 125H, RAM 16GB (여유 메모리 적음), GPU 미사용.
-- 측정 기기: Galaxy S20 (Android 13) + PCAPdroid. 통화 상대는 팀원의 iPhone이며, iPhone에서는 캡처하지 않는다.
-- **netem(Linux)과 Odroid는 사용하지 않는다.** Wi-Fi 환경은 학교 igc_user 또는 집이다.
+- 측정 기기는 **이 노트북**(통화 수신 측). 통화 상대는 **Sungmin의 Galaxy S20**(Meet·Zoom 앱, 혼자 실험 가능한 구성). 안 되면 팀원 노트북과 서로 측정(나중). 상대 기기에서는 캡처하지 않는다.
+- **netem(Linux)과 Odroid는 사용하지 않는다.**
 
 ## 핵심 메시지 (모든 설계 판단의 기준)
-> "모바일 기기에서, 앱 내부 정보 없이 네트워크 트래픽만으로 통화 품질을 **얼마나 정확하게** 실시간 추정할 수 있는가."
+> "Windows 데스크톱에서, 앱 내부 정보 없이 **패킷 헤더와 OS 지표만으로** 영상통화 품질을 **얼마나 정확히** 실시간 추정하고, 저하의 원인이 **네트워크인지 기기(CPU)인지** 구분할 수 있는가."
 
-**측정 정확도와 검증**이 이 프로젝트의 중심이다. 시각적인 연출은 이 메시지를 보여주는 도구로만 쓴다.
+**연구 질문 (v6)**
+1. Meet·Zoom 수신 영상의 초당 품질(fps·bitrate·해상도)을 IP/UDP 헤더만으로 얼마나 정확히 추정하는가? (vcaml 모델이 Linux·에뮬레이션 학습인데 Windows 실환경에서도 통하는가)
+2. 품질 저하의 원인을 **네트워크(손실·대역폭)와 기기(CPU)**로 얼마나 정확히 구분하는가? 패킷만 보면 CPU 병목은 보이지 않고(패킷은 정상, fps만 하락), OS 지표를 더하면 구분되는가? **[가설, W1 파일럿으로 확인]**
+3. 모니터(tshark + 추론) 자신이 통화에 주는 부하는 얼마인가?
 
-**연구 질문 (v5)**: Android 단말 내부의 VPN 캡처(PCAPdroid)만으로, 데스크톱에서 학습한 vcaml 모델이 모바일 영상통화 품질(fps·bitrate·frame jitter·해상도)을 얼마나 정확히 실시간 추정하는가? 그 오차는 **캡처 왜곡**과 **모델 일반화 실패** 중 어디에서 오는가?
+**측정 정확도와 검증**이 중심이다. 화면은 이 결과를 보여 주는 도구다.
 
 ## 기반과 추가 범위
-기반은 `github.com/noise-lab/vcaml`(IMC'23)이다. fork해서 직접 실행하고 수정하는 방식으로 진행한다. vcaml은 이미 pcap → LSTATS/TSTATS feature → Random Forest 순서로 fps, bitrate, frame jitter, resolution을 추정하며, 데스크톱 환경에서 오프라인 배치로 동작한다.
+기반은 `github.com/noise-lab/vcaml`(IMC'23)이다(fork `sungmin-c/vcaml` 브랜치 `mcqm`, `vcaml/` submodule, 원본에 LICENSE 없음 → 코드 복사 금지). vcaml은 pcap → LSTATS/TSTATS feature → Random Forest로 fps·bitrate·frame jitter·해상도를 추정하며 데스크톱 오프라인 배치다. 학습 데이터는 Linux Chrome + 에뮬레이션 조건이고, 논문도 in-lab → real-world 이전에서 Meet FPS MAE 12.41로 실패했다(Table 5). 그래서 **Windows 실환경 정확도는 직접 재야 한다.**
 
 **우리가 추가하는 것 (우선순위 순):**
-1. **모바일 실시간 파이프라인**: PCAPdroid 스트림 → 슬라이딩 윈도우 추론 → WebSocket → 대시보드·오버레이 앱.
-2. **모바일 측정 정확도 검증**: (a) 캡처 충실도 검증, (b) getStats 정답과 추정값 비교, (c) 원인 진단 정확도. 아래 3절 참고.
-3. **지표별 판정, 원인 표시, 조치** (v5에서 0–100 QoE 점수를 대체): fps·bitrate·frame jitter·해상도마다 정상/주의/나쁨 판정(기준과 출처는 5절), 원인(`bandwidth | loss | delay_jitter | weak_wifi | none`)과 신뢰도, 규칙 기반 조치 1줄. 원인은 **대역폭 부족과 손실을 중심**으로 검증하고, 지터·`weak_wifi`는 보조(정성)로 둔다.
-4. **Flutter 오버레이 앱 (P0)**: S20에서 통화 앱 위에 뜨는 버블(`SYSTEM_ALERT_WINDOW`). 1.4절 참고.
-5. **세 가지 입력 모드**: `Live`(폰 실시간), `Replay`(저장된 pcap 재생, 데모 fallback), `What-if`(녹화된 실제 pcap에 슬라이더로 손상 적용).
-6. **앱 간 교차 테스트**: Meet, Kakao(음성/영상). Zoom은 시간이 남을 때만 한다.
+- **P0** 실시간 파이프라인(tshark → 1초 창 → RF) + 정답 대비 정확도 평가 (Meet)
+- **P0** 원인 진단: `none | loss | bandwidth | device_cpu` + 근거 피처 + 신뢰도 (OS 지표 결합)
+- **P1** 모니터 오버헤드 측정 (H1)
+- **P1** Zoom 확장 (정답은 화면 기반 fps, 결과는 `validated:false` 기본)
+- **P1** React 대시보드 (지표별 판정, 원인·근거 카드, CPU 게이지, 추정·정답 겹침 차트)
+- **P2** Android 4계층 설계 문서 (구현 없음)
+- **P3** What-if 슬라이더 UI (여유 시)
+
+**범위에서 제외 (v6)**: 모바일 정확도 주장, Kakao, Flutter 오버레이 개발, 핫스팟 캡처, MOS/QoE 점수, 자동 복구, 고정 지연 진단.
 
 ## 절대 규칙
-1. **확인하지 않은 것을 사실처럼 쓰지 않는다.** repo 구조, 명령어, API, 도구 동작, 라이선스는 실제로 열어 보거나 실행해서 확인한다. 확인하지 못했으면 "미확인"이라고 쓰고 나에게 묻는다.
-2. Kakao에는 정답 지표가 없다(Meet는 getStats로 있음). 정답이 없는 결과에는 항상 `validated: false`와 "모델 추정값" 표시를 붙인다. "품질을 측정했다"고 쓰지 않는다.
-3. What-if는 **trace 기반 에뮬레이션**이므로 송신 측 혼잡 제어 반응을 반영하지 않는다. 이 점을 UI와 README에 명시한다.
-4. **내 폰과 내 노트북 자신의 트래픽만** 캡처한다. 다른 사람의 트래픽을 캡처하거나 Wi-Fi를 스니핑하는 코드는 만들지 않는다.
-   - 오버레이 앱 자신의 트래픽은 PCAPdroid `app_filter`로 측정 대상에서 뺀다.
-5. 마일스톤마다 테스트와 빌드를 실행하고 결과를 요약한 뒤, 승인을 받고 다음 단계로 넘어간다. 파일을 삭제하거나 덮어쓰기 전에는 먼저 알린다. 의존성을 추가할 때는 이유를 한 줄로 적는다.
-6. 원인 진단은 **트래픽 기반 추정**이다. UI에 `confidence`를 함께 표시하고, "확정 진단"처럼 쓰지 않는다. (`weak_wifi`만 폰 RSSI를 근거로 쓴다.)
+1. **확인하지 않은 것을 사실처럼 쓰지 않는다.** 확인하지 못했으면 "미확인", 가정은 `[가정]`.
+2. 정답이 없는 결과에는 항상 `validated: false`와 "모델 추정값" 표시를 붙인다. Zoom은 정답 경로(화면 기반 fps)가 검증되기 전까지 `validated:false`.
+3. What-if는 **trace 기반 에뮬레이션**이므로 송신 측 혼잡 제어 반응을 반영하지 않는다. UI와 README에 명시한다. (실측 손상이 주력이다.)
+4. **내 노트북 자신의 트래픽만** 캡처한다. 다른 사람의 트래픽 캡처나 Wi-Fi 스니핑 코드는 만들지 않는다.
+5. 마일스톤마다 테스트와 빌드를 실행하고 결과를 요약한 뒤 승인을 받고 넘어간다. 파일 삭제·덮어쓰기 전에는 알린다. 의존성·드라이버 설치는 이유와 되돌리는 방법을 함께 기록한다.
+6. 원인 진단은 **추정**이다. UI에 `confidence`를 함께 표시하고 "확정 진단"처럼 쓰지 않는다. CPU 원인은 주입한 조건이 라벨이며, 실제 현장의 CPU 병목 일반화는 주장하지 않는다.
 
-## 1. 아키텍처 (계획 단계에서 검증한 뒤 확정)
+## 1. 아키텍처
 ```
-[Galaxy S20: Kakao/Zoom/Meet 통화] ─ PCAPdroid ─(USB/adb 또는 LAN)→ 노트북
-   pcap 스트림 | 저장 파일
-   → impair.py (What-if 모드일 때만; 순수 함수, seed 고정)
-   → features.py (vcaml LSTATS/TSTATS 재사용, 슬라이딩 윈도우)
-   → estimator.py (vcaml RF) → judge.py(지표별 판정) → verdict / diagnosis / action
-   → FastAPI WebSocket ─┬→ React 대시보드 (노트북, 분석·발표 화면)
-                        └→ Flutter 오버레이 버블 (S20, 통화 중 표시)
+[Chrome(Meet) / Zoom 데스크톱 클라이언트]   ← 상대: S20 (영상 송신)
+        │ UDP (노트북 수신)
+        ▼
+tshark -i <Wi-Fi> -f udp -T fields (epoch, ip.dst, proto, udp.length[, rtp.ssrc, rtp.seq])
+  → server/features.py   (vcaml FeatureExtractor, 1초 창)
+  → estimator (vcaml RF: data/models/meet_*_cv1.pkl) → judge.py (지표별 판정)
+  + sample_os (psutil 1 Hz: 전체 CPU%, 통화 프로세스 CPU%, 메모리%)
+  → diagnosis.py v1: {none, loss, bandwidth, device_cpu}
+  → FastAPI WebSocket ─→ React 대시보드 (같은 노트북 브라우저, 웹 중심)
 ```
-- 백엔드는 `server/`에 두고 uv로 관리한다. vcaml 코드는 가능한 한 import해서 재사용한다.
-  - vcaml은 fork `sungmin-c/vcaml`(브랜치 `mcqm`)을 `vcaml/` submodule로 둔다.
-  - 원본에 LICENSE 파일이 없으므로 코드를 복사하지 않고 submodule로만 참조한다.
-- **모든 추론은 노트북에서 한다.** 대시보드와 오버레이 앱은 같은 SCHEMA를 구독하는 표시 전용 클라이언트다.
-- 프론트엔드는 React + TypeScript(Vite), Tailwind, Chart.js를 쓴다. 로직은 `src/core/`에 순수 함수로 두고, 컴포넌트는 렌더링만 담당한다.
-- **정적 데모 빌드**: 대표 시나리오의 결과를 JSON으로 미리 계산해 두어 백엔드 없이도 재생할 수 있게 한다.
+- 백엔드는 `server/`에 두고 uv로 관리한다. 모든 추론은 노트북에서 한다. 대시보드는 SCHEMA를 구독하는 표시 전용 클라이언트다 (H4: 노트북 상주 서비스 + 입력 모듈 구조).
+- 프론트엔드는 React + TypeScript(Vite), Tailwind, Chart.js. 로직은 `src/core/` 순수 함수.
+- **정적 데모 빌드**: 대표 시나리오 결과를 JSON으로 미리 계산해 백엔드 없이 재생한다.
+- **입력 모드**: `Live`(tshark 실시간), `Replay`(저장 pcap/CSV 재생, 데모 fallback), `What-if`(P3).
+- 정식 계약은 `docs/SCHEMA.md`와 `docs/schema/sample.jsonl`. v1.2(지표별 `judgement`)와 device 필드 추가(`device{cpu_pct, proc_cpu_pct, mem_pct}`, cause `device_cpu`)는 팀원 확인 대기.
 
-WebSocket 메시지 스키마:
-```json
-{"ts": 1730000000.0, "mode": "live", "app": "kakao_video", "window_s": 1.0,
- "est": {"fps": 24.1, "bitrate_kbps": 850, "frame_jitter_ms": 12.3, "height": 360},
- "truth": null,
- "impair": {"loss_pct": 0, "delay_ms": 0, "jitter_ms": 0, "bw_kbps": null},
- "qoe": 71.5, "verdict": "passed", "advice": null, "validated": false}
-```
-`truth`에는 정답(getStats)이 있을 때만 같은 필드 구조로 값을 채운다. **M1에서 이 스키마로 더미 스트림 서버를 먼저 만든다.** 웹 담당 팀원이 백엔드 완성을 기다리지 않고 바로 작업을 시작할 수 있게 하기 위해서다.
-- 정식 계약은 `docs/SCHEMA.md`와 `docs/schema/sample.jsonl`이다.
-- v1.2 초안(`docs/SCHEMA.md`)은 0–100 `qoe` 필드를 지표별 `judgement`로 대체한다. v1(`qoe` 포함)은 더미 서버·계약 테스트가 아직 사용 중이다.
-- v1.1 초안(팀원 확인 대기)은 tick에 `diagnosis {cause, confidence}`와 `action {code, text}`를 추가한다. 또 오버레이 앱이 Wi-Fi RSSI를 보내는 client→server `device` 메시지를 추가한다.
+## 2. 손상·부하 주입 (Windows, 자기 기기)
+| 조건 | 도구 | 비고 |
+|---|---|---|
+| 손실 | Clumsy `drop`, 필터 `udp and inbound` | 노트북 자신의 트래픽에는 동작함(10/13 실측) |
+| 지연·지터 | Clumsy `lag` | 고정 지연은 수신 trace에 보이지 않아 진단 대상 제외 |
+| **대역폭** | **clumsy2** (오픈소스 fork, 승인됨) | Clumsy `throttle`은 몰아 보내기일 뿐 속도 제한이 아님. 설치·동작 **미확인**, W3 직전 확인 |
+| CPU 부하 | Python `multiprocessing` busy loop (50/80/100%) | 설치 없음 |
+- 주입한 조건이 곧 라벨이다. 시스템 변경(드라이버)은 되돌리는 방법을 함께 기록한다.
+- Clumsy/clumsy2는 관리자 권한과 WinDivert 드라이버가 필요하다.
 
-### 1.4 Flutter 오버레이 앱 (P0, 담당 Sungmin)
-- **형태**: S20에서 통화 앱(Kakao·Meet) 위에 뜨는 버블이다(`SYSTEM_ALERT_WINDOW`).
-- **표시**: 지표별 판정(색 + 글자, 색만으로 구분하지 않음), 원인 1줄(`diagnosis`), 조치 1줄(`action.text`). 버블 UI는 Sungmin이 맡는다(10/13 재결정, 어제의 팀원 인계를 되돌림).
-- **[조치] 버튼**: `action.code`에 맞는 Android 설정 패널을 연다(Wi-Fi 패널 또는 인터넷 연결 패널).
-- **입력**: SCHEMA WebSocket을 구독한다. 노트북 연결 경로는 LAN 또는 USB `adb reverse` 중 M0에서 정한다.
-- **송신**: 1초마다 Wi-Fi RSSI를 `device` 메시지로 보낸다. 이 값은 `weak_wifi` 판정 근거가 된다.
-- **패키지**: 오버레이 패키지명·버전과 RSSI 권한은 **M0에서 실제로 확인해 기록**한다. 지금은 미확인이다.
-- **트래픽 분리**: 앱 트래픽은 PCAPdroid `app_filter`로 측정에서 제외한다. 제외되는지는 M0에서 확인한다.
-- **디렉토리**: `overlay/`(Flutter 프로젝트). 테스트는 `flutter test`로 메시지 파싱과 상태 색·문구 매핑을 검사한다.
+## 3. 정답과 검증
+1. **Meet 정답**: webrtc-internals dump(vcaml `WebRTCReader` 재사용) 또는 `getStats()` 1초 폴링. 자동 dump 기능은 없다(수동 다운로드, vcaml은 pyautogui로 버튼 클릭). 방식은 W1에서 정한다.
+2. **Zoom 정답**: 데스크톱 Statistics 창은 내보내기 **미확인**. REST QoS API는 Business 이상 + Dashboard 권한이 필요하고 1분 단위인데 **학생 계정은 해당 안 될 가능성이 높다**(미확인). Zoom 웹 클라이언트는 WebRTC 미디어 경로를 거의 쓰지 않는다(2019–2020 자료, 현재 미확인). → **화면 기반 fps**: 프레임 번호가 찍힌 영상을 보내고, 수신 화면을 60 fps로 녹화해 번호 변화를 센다(W1 파일럿 P4).
+3. **지표**: fps·bitrate MAE, ±2 fps 정확도, 해상도 정확도, 판정 Precision·Recall·F1·Confusion Matrix.
+4. **원인 진단 평가**: 라벨 = 주입 조건. `none/loss/bandwidth/device_cpu`. 통화 단위로 dev/test 분리. 손실은 RTP 순번이 보여야 구분된다(IP/UDP만 재현율 0.03–0.18). **Zoom은 RTP 헤더 접근 미확인.**
+5. **도메인 차이**: W1 MAE가 크면 W3–W4 수집분(Windows Meet)으로 재학습·보정하고, 이를 "Linux 에뮬레이션 → Windows 실환경 이전" 결과로 보고한다.
+6. **H1 오버헤드**: Meet 3분 × {모니터 끔, 켬} × 3회. 모니터 프로세스 CPU%와 정답 fps·framesDropped 비교. 기준 [가정]: fps 차이 < 1, CPU < 10%.
+7. 한계: 표본 수, 상대 기기 영상 변동, Linux→Windows 이전, 라벨이 인위적 부하라는 점.
 
-## 2. 데모 구성 (발표 임팩트와 측정 정확도를 동시에 보여주기)
-- 화면 배치: 왼쪽에는 **scrcpy로 미러링한 폰 화면**(실제 Kakao 통화와 그 위의 오버레이 버블), 오른쪽에는 대시보드를 둔다. 둘을 나란히 놓아 "폰에서 체감하는 품질 저하", "버블의 원인·조치", "대시보드 추정값 변화"가 동시에 보이게 한다.
-- **실시간 손상 주입 = Plan E (v5)**: 노트북 브라우저가 **Meet 통화 상대**가 되고, 노트북의 송신 트래픽에 Clumsy(손실·대역폭)를 건다. 폰은 그 영상을 받아 PCAPdroid로 캡처한다.
-  - 이유: Windows 모바일 핫스팟(NAT)을 지나가는 **폰 트래픽에는 Clumsy/WinDivert가 적용되지 않는다**(10/13 실측: Drop 10% → 손실 0%, NAT 이후 필터는 원본이 우회해 응답이 중복됨, WinDivert 문서도 forward 계층과 Windows NAT를 섞지 말라고 경고). 반면 **노트북 자신의 트래픽에는 Clumsy가 동작함**을 확인했다.
-  - 노트북이 보내는 쪽이라 대역폭을 제한하면 **송신 측 혼잡 제어가 실제로 반응**한다(What-if가 재현하지 못하는 부분).
-  - 핫스팟은 **손상용이 아니라 캡처 기준선용**이다: 폰이 핫스팟에 붙어 있으면 노트북이 tshark로 같은 트래픽을 볼 수 있다(충실도 비교). 노트북 Wi-Fi 하나로 받으며 핫스팟을 내보내는 방식은 집(5 GHz)에서 baseline 통과(M0-6); 학교 igc_user는 미측정.
-  - **Plan B(gnirehtet)는 폐기**: USB 연결이 불안정했고, PCAPdroid와 VPN 슬롯 충돌 가능성이 있다.
-  - **Plan C**: What-if 모드로 대체한다(Plan E가 안 될 때).
-  - 미확인: 노트북 카메라/가상 카메라로 Meet 영상을 내보내는 구성, Plan E에서 Clumsy가 Meet(WebRTC/UDP) 송신에 실제로 효과가 있는지.
-- 대시보드 기능: 지표별 판정 배지, 추정 지표 게이지, 판정 기준선이 있는 시계열 차트(약 30 tick), 모드 선택, 앱 선택, `truth`가 있을 때 추정값과 정답을 겹쳐 그린 차트, 경고 배지("추정값", "에뮬레이션"), 권고 영역, What-if 슬라이더 패널(Loss 0–20 %, Delay 0–300 ms, Jitter 0–100 ms, Bandwidth 제한 없음 또는 100–5000 kbps, Live Noise, Reset). 반응형으로 만들고, 레이아웃이 움직이지 않게 하며, 접근성을 고려한다.
+## 4. What-if 손상 함수 (`impair.py`, P3 보조)
+Bernoulli/Gilbert 손실, 토큰 버킷 대역폭(200 ms 초과 시 버림), 지연+지터(FIFO). seed 고정, 청크 적용이 전체 적용과 같음(테스트 있음).
 
-## 3. 측정 정확도 검증 (이번 버전의 핵심 추가 사항)
-1. **캡처 충실도**: PCAPdroid는 VPN(tun) 방식으로 캡처하므로 타임스탬프와 패킷 크기가 실제 유선 구간과 다를 수 있다. 동일한 통화를 (a) 폰의 PCAPdroid와 (b) 노트북 핫스팟 인터페이스의 Wireshark/tshark로 동시에 캡처하고, 패킷 수·크기 분포·IAT 분포·추정 결과를 비교한다. 차이가 있으면 그 크기를 수치로 보고한다. (Npcap은 보기만 하므로 NAT 문제와 무관하다 [가정]; 실제 캡처는 파일럿에서 확인.) 루팅 기기가 없어 root 모드와의 비교는 하지 않는다.
-   - **캡처 충실도와 추정 정확도는 따로 검증한다**: 둘을 섞으면 오차 원인이 "캡처 왜곡"인지 "모델 일반화 실패"인지 구분할 수 없다.
-2. **정답 대비 정확도**: 폰 Chrome에서 Meet 통화를 하는 동안, USB 디버깅으로 노트북 DevTools(chrome://inspect)에 연결해 getStats를 1초 간격으로 수집하는 방법을 조사하고 구현한다. 가능하다면 스니펫을 주입하거나 webrtc-internals를 덤프하는 방식으로 한다. **먼저 가능 여부를 보고한다.** 정답을 얻으면 fps·bitrate의 MAE, ±2 fps 정확도, Normal/Degraded 판정의 Precision·Recall·F1·Confusion Matrix를 계산한다.
-3. **일반화**: vcaml 데스크톱 데이터로 학습한 모델과, 폰에서 수집한 Meet 데이터로 재학습(또는 보정)한 모델의 성능을 비교한다.
-4. **원인 진단 정확도 (축소)**: **Plan E**에서 Clumsy로 주입한 손상 종류를 정답 라벨로 쓴다. 대상은 `loss`와 `bandwidth`와 `none`이다.
-   - 라벨 매핑: drop → `loss`, bandwidth → `bandwidth`, 손상 없음 → `none`. **lag(고정 지연)는 수신 trace에 흔적이 없어 진단 대상이 아니다**(합성 실험: 97–100%가 "정상"). `delay_jitter`는 합성 결과만 보조로 보고한다.
-   - 손실은 **RTP 순번**이 보여야 구분된다(IP/UDP만으로는 재현율 0.03–0.18). Meet는 RTP 평문 헤더가 있고, Kakao는 미확인.
-   - 지표: 클래스별 Precision·Recall, Confusion Matrix, 판정 지연(손상 시작부터 첫 정답 판정까지 걸린 초).
-   - `weak_wifi`는 Clumsy로 주입할 수 없다. 폰을 AP에서 멀리 옮기면서 RSSI와 함께 기록하는 정성 확인으로만 다룬다.
-5. 앱 간 비교: 같은 손상 조건에서 Meet와 Kakao의 추정·진단 결과를 비교한다. Kakao는 정답이 없으므로 "정성 비교"로 표기한다. Zoom은 제외한다.
-6. **(선택, 방향 2) 화면 기반 정답 파일럿**: 하루만 써서 확인한다. 노트북이 프레임마다 값이 바뀌는 영상을 가상 카메라로 보내고, 폰 화면 녹화에서 실제 수신 fps·멈춤을 센다. Meet에서 getStats와 맞는지 먼저 대조하고, 맞으면 Kakao에 적용한다. 확인할 것: ① Kakao 통화 화면이 녹화되는지(보안 설정 가능성) ② 녹화에서 프레임 변화를 셀 수 있는지 ③ Meet에서 getStats와 대략 일치하는지. 하나라도 막히면 접는다. 성공하면 "Kakao 정량 검증"을 추가 기여로 넣는다.
-7. 한계: 정답 부재, 표본 수, 에뮬레이션과 캡처 방식의 한계, 진단 라벨이 인위적 손상이라는 점을 그대로 적는다.
-
-## 4. What-if 손상 함수 (`impair.py`)
-- 손실: Bernoulli 또는 Gilbert-Elliott(버스트) 모델로 패킷을 제거한다.
-- 지연·jitter: 타임스탬프를 이동시킨다. 순서 뒤바뀜을 어떻게 처리할지 계획 단계에서 제안한다.
-- 대역폭: 토큰 버킷으로 초과 패킷을 지연시키거나 제거한다.
-- seed를 고정해 재현 가능하게 한다. 1 tick 안에 손상 적용 → feature 추출 → RF 추론이 끝나는지 성능을 확인한다.
-
-## 5. 지표별 판정 (v5: 0–100 QoE 점수 대체)
-- 이유: 0–100 점수는 기준이 불명확했고(임계값 70과 계수에 근거가 없음, 주관 평가가 없어 검증 불가), G.1070은 코덱·해상도별 계수가 정해진 모델이라 vcaml 추정값을 넣어도 "준수"가 아닌 "참고"에 그친다.
-- 방식: fps, bitrate, frame jitter, 해상도마다 **정상 / 주의 / 나쁨** 판정. 전체 판정(`verdict`)은 "하나라도 나쁨이면 failed"로 둔다.
-- 기준값은 공개된 자료에서 가져와 **출처를 코드 주석과 문서에 단다**. 후보: OpenTok network test의 해상도별 bitrate·손실 표(예: 720p는 1000 kbps 초과·손실 0.5% 미만이면 Excellent, 350 kbps 초과·3% 미만이면 Acceptable), vcaml의 freeze 정의(`config.yaml`), Meet/Zoom 권장치. **네트워크 jitter 권장치(Zoom 40 ms 등)를 frame jitter에 그대로 쓰지 않는다**(다른 양). 기준이 정해지기 전까지는 "미정"으로 둔다.
-- 표시: 판정은 "추정값"이며(Meet 정답이 있으면 정답 판정과 일치율을 보고), 색만으로 구분하지 않고 글자도 함께 쓴다.
-- 테스트: 지표가 나빠질수록 판정이 좋아지지 않는지(단조성), 경계값, 모든 지표가 같은 방향으로 움직일 때 전체 판정이 일관적인지.
+## 5. 지표별 판정 (0–100 QoE 점수 대체)
+- fps, bitrate, frame jitter, 해상도마다 **정상 / 주의 / 나쁨**. 전체 `verdict`는 하나라도 나쁨이면 failed.
+- 기준값은 공개 자료에서 가져와 **출처를 코드 주석과 문서에 단다**. 후보: OpenTok network test의 해상도별 bitrate·손실 표, vcaml freeze 정의(`config.yaml`), Meet/Zoom 권장치. 네트워크 jitter 권장치를 frame jitter에 그대로 쓰지 않는다. 기준이 정해지기 전까지는 "미정".
+- 테스트: 단조성, 경계값, 전체 판정 일관성.
 
 ## 6. 마일스톤
-| # | 기한 | 내용 |
+| 주 | 기간 | 내용 |
 |---|---|---|
-| M0 | 10/19 (폰 불필요 항목), 10/23 (통화 필요 항목) | 검증 스파이크: vcaml 학습 재현(`uv run python vcaml/train.py`), Kakao pcap 분석(UDP/TCP, 패킷 크기), PCAPdroid pcap 파싱(linktype), PCAPdroid → 노트북 스트리밍, 핫스팟 + 손상 도구, scrcpy, 폰 Chrome getStats 수집 가능 여부, **Android 13 Flutter 오버레이 동작(10/18)**, **PCAPdroid `app_filter`로 오버레이 트래픽 제외**. **결과를 보고한 뒤 범위를 재조정한다** |
-| M1 | 10/26 | 더미 스트림 + 대시보드 뼈대(웹 담당) / vcaml 재현 수치 / SCHEMA v1.1 확정 |
-| M2 | 11/6 | Replay 실시간 추론 + 지표별 판정 + 진단 v0 / Meet 정답 수집 파이프라인 / 충실도 비교 스크립트 |
-| M3 | 11/13 | Live 모드 + 캡처 충실도 실험 + 정답 대비 정확도 |
-| M4 | 11/20 | Plan E 손상 실험(손실·대역폭) + Meet·Kakao 교차 실험 + 결과표 (What-if UI는 여유 시) |
-| M5 = Freeze | 11/24 | 테스트, README, 정적 데모 빌드, 녹화본, 데모 스크립트, **기능 동결** |
-| 리허설 | 11/26–12/1 | 리허설 2회 (**발표장과 같은 igc_user 환경에서**: 핫스팟, 통화, 손상 주입, scrcpy, 오버레이를 모두 점검. 실패 시 전환할 Replay와 녹화본도 점검) |
-| Demo | 12/2 | Final Demo |
+| **W1 파일럿** | 10/14–10/19 | 문서 v6. P1 Meet 1통화 실시간→정답 MAE. P2 CPU 부하 3단계에서 "패킷 정상, fps 하락" 확인. P3 H1 on/off. P4 Zoom 정답 경로 |
+| W2 | 10/20–10/26 | `capture/tshark_live.py`, `judge.py`, FastAPI WS(Live·Replay), psutil 수집기 / 팀원: WS 클라이언트·배지·차트. (Midterm 1 10/21) |
+| W3 | 10/27–11/2 | Meet ≈30통화 수집(조건표), clumsy2 확정 |
+| W4 | 11/3–11/9 | Zoom ≈15통화, `diagnosis.py` v1(device_cpu) |
+| W5 | 11/10–11/16 | 평가(MAE, confusion matrix, H1 표) |
+| W6 | 11/17–11/23 | Android 4계층 설계 문서, README, **11/24 동결** (Midterm 2 11/25) |
+| W7 | 11/24–12/1 | 리허설 2회, 녹화본, Replay 대체 시연 점검. **12/2 Demo** |
 
-**Flutter 오버레이 마일스톤**
-| 기한 | 내용 |
-|---|---|
-| 10/18 | Android 13 오버레이 권한·표시 확인 (M0) |
-| 11/8 | 더미 스트림 연동 |
-| 11/15 | Live 연동 |
-| 11/20 | 표시 문구 확정 |
+대체안: 실시간 tshark 불안정 → Replay. CPU 부하에도 fps 불변 → 부하 강화 후 "기기 원인 관측 안 됨"으로 보고. Zoom 정답 실패 → 추정값만 `validated:false`. clumsy2 불가 → 손실·CPU만.
 
-외부 일정: Midterm 1(10/21)과 Midterm 2(11/25)는 프로젝트와 무관한 시험이다. 해당 주간은 작업량만 줄인다.
+## 7. Android 4계층 설계 (구현 없음, P2)
+계층 L1 앱/QoE, L2 전송, L3 무선(Wi-Fi·셀룰러), L4 기기. 분류 N(일반) / S(특수 접근) / P(특권) / X(불가). 상세 표는 계획 문서 3-3절과 향후 `docs/ANDROID_DESIGN.md`. 요지:
+- L1은 다른 앱 통계를 읽을 수 없다(X) → L2 추정이 대신한다.
+- L4의 다른 앱 CPU는 읽을 수 없다 → `device_cpu`는 Android에서 발열 상태 등으로 대체해야 한다(한계).
+- 조치는 안내형(Settings.Panel)만 가능. 자동 Wi-Fi↔셀룰러 전환은 일반 앱 불가.
+- **팀 실측 근거(10/13, S20 Android 13)**: PCAPdroid VpnService 캡처·UDP 스트리밍, RSSI(`NetworkCapabilities` + `ACCESS_NETWORK_STATE`), `Settings.Panel`, `SYSTEM_ALERT_WINDOW` 오버레이. 공식 문서 원문을 확인하지 못한 항목은 `[미확인-원문]`으로 표기한다.
 
-## 7. 발표 구성 (12분)
+## 8. 발표 구성 (12분)
 | 시간 | 내용 |
 |---|---|
-| 0–2분 | 문제 제기: 앱 내부 정보 없이 모바일 통화 품질을 알 수 있는가 |
-| 2–4분 | 방법: vcaml 원리 + 우리가 추가한 것 3가지 |
-| 4–9분 | **라이브 데모**: 정상 통화 → 손상 주입 → 폰 화면, 오버레이 버블(원인·조치), 대시보드가 함께 변화 → [조치] 버튼 → What-if 슬라이더 |
-| 9–11분 | 결과: 캡처 충실도, 정답 대비 정확도(MAE, F1), 원인 진단 정확도, Meet·Kakao 비교 |
+| 0–2분 | 문제: 암호화된 통화에서 품질 저하의 원인이 네트워크인지 기기인지 어떻게 아는가 |
+| 2–4분 | 방법: vcaml 원리 + 우리가 추가한 것(실시간, OS 지표 결합, 원인 진단) |
+| 4–9분 | **라이브 데모**: 정상 통화 → 손실/대역폭/CPU 부하 주입 → 대시보드에서 판정·원인·근거 변화 |
+| 9–11분 | 결과: 정답 대비 정확도, 원인 진단 정확도, 오버헤드, Android 설계 요약 |
 | 11–12분 | 한계와 향후 과제 |
 
 라이브 데모가 실패하면 즉시 Replay와 녹화본으로 전환한다.
 
-## 8. 테스트
-- pytest: impair(손실률 통계, seed 재현성), features(알려진 입력에 대한 기대값), judge(지표별 판정 단조성, 경계값), diagnosis(손상 종류별 규칙 판정), SCHEMA 계약(`tests/test_schema_contract.py`).
-- Vitest: 프론트엔드 `core/`.
-- `flutter test`: 오버레이 앱의 메시지 파싱, 상태 색·문구 매핑.
+## 9. 테스트
+- pytest: impair, features, judge(단조성·경계), diagnosis(조건별 규칙), SCHEMA 계약. Vitest: 프론트엔드 `core/`.
 
-## 9. 산출물
-- `README.md` (한국어 + 영어 요약): 맨 위에 **"vcaml 대비 바꾼 것/추가한 것" 3줄**을 두고, 이어서 아키텍처 다이어그램, 공식, 재현 방법, 정확도 결과표, 한계를 적는다.
-- 디렉토리: `capture/`, `server/`, `dashboard/`, `overlay/`(Flutter), `scripts/`, `docs/`, `tests/`, `vcaml/`(submodule).
-- 오버레이 앱 APK(debug 빌드 가능).
-- 데모 스크립트와 발표 구성안, 최종 보고서 초안(한국어).
-
-## 부록: 초파리 connectome 패널 (기본 범위에서 제외)
-M4가 예정보다 일찍 끝나고 나 또는 팀원이 명시적으로 요청한 경우에만, 동결(11/24) 전까지의 범위에서 착수한다. 착수하면 QoE를 보상 신호로 삼아 DAN→KC→MBON 회로가 반응하는 2D 패널을 만들고, **"예시적 은유이며 생물물리 모델이 아님"**을 명시한다. 데이터는 오프라인 스크립트로 추출한 정적 JSON(노드 수백 개 이하)만 쓰고, 추출에 실패하면 "schematic"으로 표기한다. 출처와 라이선스를 표기한다.
-
-## 시작
-위 내용을 3줄로 요약하고, Plan mode에서 질문(최대 5개)과 계획을 제시한다.
+## 10. 산출물
+`README.md`(한국어 + 영어 요약, 맨 위 "vcaml 대비 추가한 것" 3줄), `capture/ server/ dashboard/ scripts/ docs/ tests/ vcaml/`, `overlay/`는 보관(설계 근거), 데모 스크립트, Android 설계 문서, 최종 보고서 초안(한국어).
