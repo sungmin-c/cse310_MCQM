@@ -10,29 +10,83 @@
 | Q3 | 팀원 GitHub 계정명, `main` 보호 | 계정명은 추후 전달. 그때까지 collaborator·브랜치 보호 보류 | ⏳ |
 | Q4 | ☎ 세션 | 다음 주 중 (날짜 미정). M0 #3–9는 그때 실행. Kakao·Zoom 계정 준비 여부는 미확인 | ⏳ |
 | Q5 | Flutter 앱(APK) | **P0 확정, 담당 Sungmin.** 통화 앱 위 오버레이 버블. 추론은 노트북. 상세는 PROJECT_SPEC §1.4 | ✅ |
-| Q6 | `weak_wifi` 판정 근거 | 오버레이 앱이 RSSI를 `device` 메시지로 송신(SCHEMA v1.1 초안). 진단 정확도 실험은 Clumsy 4종(`bandwidth`/`delay_jitter`/`loss`/`none`), `weak_wifi`는 정성 확인 | ✅ |
+| Q6 | `weak_wifi` 판정 근거 | 오버레이 앱이 RSSI를 `device` 메시지로 송신(SCHEMA v1.1 초안). **v5: `weak_wifi`는 정량 평가에서 제외, 정성 확인만** | ✅ |
 | Q7 | 일정 | 발표 12/2, 동결 11/24. M2 11/6, M3 11/13, M4 11/20. M0은 10/19(폰 불필요)·10/23(통화) 분할 | ✅ |
 | Q8 | SCHEMA v1.1 | 초안 작성 완료. **팀원 확인 대기** → M1(10/26)까지 확정 | ⏳ |
-| Q9 | 진단 실험의 `delay_jitter` 라벨 | Clumsy lag(고정 지연)는 수신 trace에 흔적이 없어 진단할 수 없다(M2 선행 작업 발견 1). 지터를 만드는 Clumsy 모듈(throttle 등)을 쓸지, 라벨을 재정의할지는 **M0-7 Clumsy 테스트 때 실측을 보고 결정** | ⏳ |
-| Q10 | 라이브 손상 주입 방법 (M0-7 실패) | 후보: A′ WinDivert `NETWORK_FORWARD` 계층(pydivert 4.x는 지원하나 **WinDivert 문서가 Windows NAT와 함께 쓰지 말라고 경고**, NAT 이후 필터 시험에서 원본이 통과함을 확인 → 가능성 낮음), B gnirehtet(PCAPdroid와 VPN 슬롯 충돌 가능성), C What-if 대체. 노트북 자신의 트래픽엔 Clumsy가 동작함 | ⏳ |
-| Q10-B | gnirehtet 시험 (10/13) | v2.5.1 win64(SHA256 `7f5b1063…` 공식값 일치, 설치 위치는 CLAUDE.local.md). 첫 설치는 `INSTALL_FAILED_VERIFICATION_FAILURE` → 개발자 옵션 'USB를 통해 설치된 앱 확인' 해제 후 설치 성공. relay에 client 연결까지 됐으나(`Client #0 connected`) **USB가 수 초마다 끊겨 터널이 유지되지 않음** → gnirehtet은 VPN으로 모든 트래픽을 USB로 보내므로 끊기면 폰 인터넷 전체가 끊김. **케이블 교체 후 재시험** (scrcpy M0-8과 같은 원인 추정, 미확인). 되돌리기: `adb uninstall com.genymobile.gnirehtet`, 개발자 옵션 원복 | ⏸ |
+| Q9 | 진단 실험의 `delay_jitter` 라벨 | **결정(10/13, v5)**: 고정 지연은 진단 대상이 아님. 진단 정량 평가는 `loss`·`bandwidth`·`none`만. 지터는 합성 결과 보조 보고 | ✅ |
+| Q10 | 라이브 손상 주입 방법 | **결정(10/13, v5): Plan E** — 노트북 브라우저가 Meet 통화 상대, 노트북 송신에 Clumsy(손실·대역폭). 핫스팟 경유 폰 트래픽엔 Clumsy/WinDivert 불가(실측). 핫스팟은 캡처 기준선용. 미검증: 가상 카메라 구성, Clumsy의 Meet 송신 효과 | ✅(검증 대기) |
+| Q10-B | gnirehtet 시험 (10/13) | **폐기(v5)**. USB 연결이 수 초마다 끊겼고 PCAPdroid와 VPN 슬롯 충돌 가능성. 폰의 앱은 설치된 채이며 필요 없으면 `adb uninstall com.genymobile.gnirehtet` | ❌ 폐기 |
+| Q11 | 방향 재설정 (10/13) | 비판적 분석 후 승인: **방향 1(모바일 측정 타당성 검증) + 방향 3 축소(손실·대역폭 원인)**. 방향 2(화면 기반 정답)는 **하루 파일럿**. 0–100 QoE 점수는 **지표별 판정**으로 대체(SCHEMA v1.2 초안). 라이브 데모는 Meet·Kakao 둘 다. 대시보드=팀원(주 3시간, 최소 범위), 버블 UI=Sungmin. Zoom 제외. 루팅 기기 없음 | ✅ |
+| Q12 | SCHEMA v1.2 (지표별 판정) | 초안 작성. **팀원 확인 대기** (v1.1과 함께 M1 10/26까지 확정) | ⏳ |
+| Q13 | 방향 재설정 v6 (10/14) | 교수님 면담: **데스크톱(Windows) 우선**, 12/2 = 데스크톱 MVP 구현·검증, Android는 설계·실현 가능성 분석까지(구현 없음), 대상 Meet·Zoom. v5 모바일 작업은 설계 근거로 보관. 계획 승인됨 | ✅ |
+| Q14 | 통화 상대 기기 | **S20 단독**(Meet·Zoom 앱, 거치대 고정 [가정]). 안 되면 팀원 노트북과 서로 측정(나중) | ✅ |
+| Q15 | Zoom 정답 | 학생 계정(요금제 미확인, QoS API는 Business 이상 필요). **화면 기반 fps**로 간다. 파일럿 P4에서 가능 여부 확인 | ✅(검증 대기) |
+| Q16 | 대역폭 제한 도구 | **clumsy2 설치 승인**. 설치는 W3 직전, 되돌리는 방법 함께 기록. 동작 미확인 | ✅(설치 대기) |
+| Q17 | 브랜치 정리 | `ml/m2-core`(PR #1) merge, `ml/overlay-spike`는 브랜치만 보존(PR 없음). 실행 직전 PR 상태 확인 | ⏳ 실행 대기 |
+| Q18 | H4 / 팀원 범위 / 웹 중심 | H4 = 노트북 상주 서비스 + 입력 모듈로 확정. 대시보드 필수 = 원인·근거·CPU 카드(What-if 슬라이더는 선택), 팀원 동의함. **최종 화면은 웹 대시보드, 네이티브 앱 없음** | ✅ |
 
-## 일정 (발표 12/2, 동결 11/24)
-| 주 | 기간 | 외부 일정 | 마감 | 나 — ML·Python | 나 — Flutter 오버레이 | 팀원 — Web | ☎ 세션 | 상태 |
-|---|---|---|---|---|---|---|---|---|
-| W1 | 10/12–10/18 | | 오버레이 권한 10/18 | bootstrap ✅, M0 폰 불필요 항목(0, 1, 2, 6, 7, 10) | M0 (a): Android 13 오버레이·RSSI·설정 패널 확인 | uv·node 설치, `dashboard/` scaffold(Vite+TS+Tailwind+Chart.js+Vitest), SCHEMA v1·v1.1 리뷰, 더미 스트림 연결 | — | 🟡 |
-| W2 | 10/19–10/25 | **Midterm 1 (10/21)** | M0 10/19 · 10/23 | M0 통화 항목(3, 4, 5, 8, 9, b), M0 보고·범위 재조정, vcaml 재현 수치 | — | WS client(`core/stream.ts`), `parseMessage`+Vitest(sample.jsonl), 배지·게이지·고정 레이아웃 | M0 세션 (학교 1 + 집 1) | ⬜ |
-| W3 | 10/26–11/1 | | M1 10/26 | SCHEMA v1.1 확정·반영, Replay: pcap→윈도우→features→RF→`qoe.py`(+pytest)→FastAPI WS | 버블 UI (sample.jsonl 고정 데이터) | 시계열 차트(30 tick, 임계선), 모드·앱 선택, 경고 배지, 반응형 | — | ⬜ |
-| W4 | 11/2–11/8 | | M2 11/6 · 오버레이 더미 11/8 | 진단 v0 `diagnosis.py`(+pytest), Meet 정답 수집 파이프라인, `impair.py`+pytest | 더미 스트림 연동, [조치] 버튼, RSSI 송신 | 정답 겹침 차트, 진단·조치 표시, fixture 재생 모드 | Meet 정답 수집 | ⬜ |
-| W5 | 11/9–11/15 | | M3 11/13 · 오버레이 Live 11/15 | Live 모드(TCP exporter), 캡처 충실도, 정답 대비 정확도(MAE, ±2fps, P/R/F1, CM) | Live 연동 | What-if 슬라이더 → control 메시지, 접근성 | 충실도 실험 | ⬜ |
-| W6 | 11/16–11/22 | Midterm 2 준비 | M4 11/20 · 문구 11/20 | What-if 연결, Meet·Kakao 교차 실험, **원인 진단 정확도 실험**, 일반화, 결과표, README 초안 | 표시 문구 확정, debug APK | 결과 화면, 정적 데모 빌드 | 교차·진단 실험 (11/16–11/18 집중) | ⬜ |
-| W7 | 11/23–11/29 | **Midterm 2 (11/25)** | **Freeze 11/24** | M5: pytest 정리, 녹화본, 데모 스크립트 → 동결. 리허설 1 (igc_user, [가정] 11/27) | APK 최종 | 동결, 리허설 | 리허설 1 | ⬜ |
-| W8 | 11/30–12/6 | | **Final Demo 12/2** | 리허설 2 ([가정] 12/1), 발표 | | 발표 | 리허설 2 | ⬜ |
-| W9 | 12/7–12/12 | 종료 12/12 | | 최종 보고서 초안(한국어, [가정] 12/12까지) | | | — | ⬜ |
+## 방향 재설정 v6 (10/14)
+- 근거: 교수님 면담 결과 + 4개 조사(R1 vcaml 논문, R2 데스크톱 정답·손상 도구, R3 Android 접근성, R4 선행 연구). 요지는 `docs/PROJECT_SPEC.md` v6.
+- 핵심 변화: 모바일 정확도 → **데스크톱에서 네트워크 vs 기기(CPU) 원인 진단 + 실시간 추정 + 모니터 오버헤드**.
+- 보관(개발 중단): `capture/pcapdroid_rx.py`, `overlay/`(브랜치 `ml/overlay-spike`), `data/m0/udp_run*`. 폐기: 핫스팟·Plan E·gnirehtet·scrcpy·Kakao 데모.
+- 알려진 위험: vcaml 모델이 Linux·에뮬레이션 학습이라 Windows 실환경 이전 오차가 클 수 있다(논문 Meet MAE 12.41, Table 5) → W1 P1에서 측정, 크면 재학습.
 
-일정 리스크:
-- **W6은 Sungmin의 부하가 가장 크다.** M4, Flutter 문구 확정, README가 겹친다. Zoom은 W6이 끝난 시점에 시간이 남을 때만 한다.
-- 동결 다음 날이 Midterm 2이므로, M5 작업은 W6 안에 대부분 끝내야 한다.
+## 일정 (발표 12/2, 동결 11/24) — v6
+| 주 | 기간 | 외부 일정 | 마감 | 나 — Python·실험 | 팀원 — Web | 상태 |
+|---|---|---|---|---|---|---|
+| **W1 파일럿** | 10/14–10/19 | | | 문서 v6. **P1** Meet 1통화 tshark 실시간 → 기존 모델 → 정답(webrtc dump) MAE. **P2** CPU 부하 3단계: "패킷 정상, fps 하락" 확인. **P3** H1 모니터 on/off. **P4** Zoom 정답(화면 녹화 fps, Statistics 창 내보내기 여부) | SCHEMA v1.2 + device 리뷰, `dashboard/` scaffold | 🟡 ✅ P1–P4 완료(아래 "W1 파일럿 결과") |
+| W2 | 10/20–10/26 | **Midterm 1 (10/21)** | | `capture/tshark_live.py`, `judge.py`, FastAPI WS(Live·Replay), psutil 수집기 | WS 클라이언트, `parseMessage`+Vitest, 판정 배지, 차트 | ⬜ |
+| W3 | 10/27–11/2 | | | Meet ≈30통화 수집(조건표), clumsy2 설치·확정 | 추정·정답 겹침 차트 | ⬜ |
+| W4 | 11/3–11/9 | | | Zoom ≈15통화, `diagnosis.py` v1(`device_cpu`) | 원인·근거 카드, CPU 게이지 | ⬜ |
+| W5 | 11/10–11/16 | | | 평가: MAE, confusion matrix, H1 표 | 결과 화면 | ⬜ |
+| W6 | 11/17–11/23 | | **Freeze 11/24** | Android 4계층 설계 문서, README, 정적 데모·녹화본 | 다듬기, 접근성 | ⬜ |
+| W7 | 11/24–12/1 | **Midterm 2 (11/25)** | **Final Demo 12/2** | 리허설 2회(Replay 전환 점검), 발표 | 리허설, 발표 | ⬜ |
+| W8 | 12/3–12/12 | 종료 12/12 | | 최종 보고서 초안(한국어, [가정] 12/12까지) | | ⬜ |
+
+일정 리스크: 통화 30–45건은 S20 단독이라 시간이 직접 든다(약 2.5–4시간 + 설정). W3–W4에 몰리므로 W2에서 자동화 스크립트를 먼저 만든다. 동결 다음 날이 Midterm 2이므로 M5 작업은 W6 안에 끝낸다.
+
+v5 모바일 일정(E1 충실도, E2 정확도, E3 진단, Flutter 오버레이 마일스톤)은 git 이력(커밋 4bfda7b)에 있다.
+
+## W1 파일럿 결과 (10/15) — P1–P4 완료
+도구: `scripts/pilot_live.py`(tshark 실시간 → 모델 → CSV, psutil 1 Hz, 정답 비교), `scripts/cpu_load.py`(busy loop + `--pin N` Chrome 코어 제한). 데이터는 `data/pilot/`(git 제외). 환경: Windows 노트북 Wi-Fi 수신, 상대 S20 Meet 앱(P2P 직접 연결), 노트북 Chrome.
+
+**P1 — Meet 실시간 추정 vs webrtc-internals 정답 (196초)**
+| 지표 | 정답 | 추정 | 오차 |
+|---|---|---|---|
+| fps | 29.4 | 20.4 | **MAE 9.09** (vcaml 재현 1.33) |
+| bitrate | 1932 kbps | 331 kbps | 약 6배 과소 |
+| frameHeight | 1280 | 270 | 정확도 0% |
+- 시간 정렬 문제 아님(±3초 이동해도 MAE 불변). 패킷에서 직접 계산한 수신 bitrate는 2111 kbps로 정답과 비슷 → **캡처는 정상, 모델이 학습 범위를 벗어남**. in-lab Meet 40통화 표본: bitrate 중앙값 125·최대 566 kbps, 높이 180/270/360뿐, 우리 통화는 1.9 Mbps·1280·30 fps.
+- 결론: 논문의 in-lab → real-world 이전 실패(MAE 12.41)와 같은 양상. **W3 수집 데이터로 재학습이 필요하다** (통화 단위 분리). 이 결과 자체를 발표 소재로 쓴다.
+- 정답 파서 주의: Meet는 통화 중 PeerConnection을 갈아탄다(예: 540p 800 kbps → 720p/1280 2 Mbps). vcaml `WebRTCReader`는 첫 PC만 읽어 fps 0이 나온다 → `pilot_live.py compare`가 캡처 구간에 fps>0이 가장 많은 PC를 고른다. **수집 단계에서도 같은 처리 필요.**
+- 모니터 오버헤드(P3 예비): tshark+python CPU 평균 1.4%, 최대 2.5%. tick 추론 약 110 ms(전체 CPU 부하 상태에서 측정, 벤치 36 ms와 다름 [미확인 원인]).
+
+**P2 — CPU 부하에서 "패킷 정상, 품질 하락"이 보이는가**
+- P2-1 (busy loop 18프로세스, 배터리 → 충전기 연결): 총 CPU 89%까지 올라도 수신 fps 28.6–29.9 유지, 드롭·freeze 0. **디코드 시간 1.5 → 12.5 ms(약 8배)**로 신호는 있었다(소프트웨어 디코더, `powerEfficientDecoder=false`).
+- P2-2 (Chrome을 2코어로 제한, **배터리 상태**): 제한 직후 45초간 디코드 시간 6.6 → 최대 57 ms, **freeze 36회**, 송신 fps 16.5 → 3.5, 패킷 수·bitrate는 정상. 이후 Chrome이 적응해 안정. 수신 fps(`framesReceived/s`)는 끝까지 27.7–29.7.
+- 결론: (1) vcaml 라벨인 수신 fps는 기기 병목을 못 본다 → **device_cpu 정답은 freeze·디코드 시간·송신 fps로 정의**한다. (2) 부하는 busy loop보다 **코어 제한이 효과적** → W3 조건표에 사용. (3) `qualityLimitationReason`은 송신 fps가 3.5로 떨어져도 끝까지 `none` → **기기 원인의 정답으로 쓸 수 없다.**
+- 한계: 각 조건 1회, 단계 안에서 시간에 따라 변함(적응). P2-2의 "부하 0%" 단계도 이미 2코어 제한 상태. 통계적 주장은 W3 반복 수집 뒤에 한다.
+- 사고 기록: `cpu_load.py --pin` 첫 버전이 종료 시 Chrome affinity를 복원하지 못했다(묶인 뒤 뜬 자식 프로세스가 2코어를 물려받음). 수동으로 전체 코어 복원 후 확인, 스크립트는 항상 전체 코어로 복원하도록 수정. 되돌리기: Chrome 완전 종료 후 재실행.
+
+**P3 — 모니터 on/off 오버헤드 (H1), Meet 1통화, 배터리 상태**
+- 방법: `scripts/overhead_ab.py`가 한 통화에서 모니터(tshark + 모델 + psutil)를 끔/켬 50초씩 3번 번갈아 실행(앞 150초는 연결 전환 대기, 제외). 통화 쪽은 webrtc-internals dump로 단계별 비교.
+| 지표 (단계 평균, 각 3회) | 끔 | 켬 |
+|---|---|---|
+| 모니터 CPU(tshark+python) | — | **1.27%** (±0.31) |
+| Chrome CPU / 전체 CPU | 9.2% / 22.7% | 8.9% / 23.7% |
+| 수신 fps / 디코드 fps | 28.16 / 29.78 | 28.20 / 29.79 |
+| 디코드 시간 | 5.78 ms | 5.70 ms |
+| freeze / 드롭 | 0.05 / 0 | 0 / 0 |
+| 송신 fps | 29.16 | 28.76 |
+- 결론: **H1은 데스크톱에서 기각** — 모니터 CPU 약 1.3%, 통화 지표 차이는 단계 간 변동 안. 기준(fps 차이 < 1, CPU < 10%) 통과. 모델 1회 추론 p50 81 ms·p95 126 ms(배터리 상태, 벤치 36 ms보다 느림 [추정: CPU 속도 제한]).
+- 한계: 통화 1건, 각 3회, 배터리 상태. W5에서 반복해 발표용 표로 만든다.
+
+**P4 — Zoom 정답 가능성 (Zoom 데스크톱 7.2.1, 노트북 수신, 상대 S20 Zoom 앱, 1통화)**
+- 패킷: tshark로 잡힌다. **Zoom은 서버 경유**(`170.114.190.137:8801`, UDP), 수신 약 1.9 Mbps, 초당 약 200패킷. Meet(P2P)와 경로가 다르다.
+- 통계 창(설정 → 통계 → 비디오): 지연·지터·패킷 손실·해상도·fps가 송신/수신 따로 나온다(수신 24→23 fps, 480×640, 지연 46–51 ms, 지터 1 ms, 손실 0%). **파일 내보내기 없음**, fps는 정수, 갱신 주기 [미확인]. 통화 밖에서는 CPU·메모리만 표시. 자동 수집하려면 주기 캡처 + OCR 필요(Windows 기본 OCR 사용 가능 여부 [미확인]).
+- 화면 녹화(Game Bar 30 fps, 20초): 수신 영상 타일만 잘라 프레임 간 차이로 센 fps가 임계값에 크게 의존(0.05→24.7, 0.1→19.4, 0.3→17.2; 통계 창 23–24). 낮은 임계값에서만 일치. 개선안: S20 화면에 스톱워치처럼 매 프레임이 바뀌는 것을 비추고 60 fps로 녹화.
+- 도구: opencv-python을 `uv run --with`로 임시 사용(프로젝트 의존성 변경 없음, 승인 10/15). 되돌리기 `uv cache clean opencv-python`.
+- 결론(제안): Zoom 정답 = **통계 창 값(주) + 화면 녹화 교차 검증(소수 통화)**. 정수 fps·갱신 주기 미확인이라 Meet보다 거친 **근사 정답**으로 표기한다. Meet 모델의 Zoom 추정(fps 약 18)은 통계 창(23–24)과 달라 Zoom도 재학습이 필요하다. 모니터 CPU 0.9%.
 
 ## Bootstrap (10/12)
 | 항목 | 결과 | 상태 |
@@ -48,7 +102,7 @@
 ## M0 — 검증 스파이크 (마감: 폰 불필요 항목 10/19, ☎ 항목 10/23, 오버레이 권한 10/18)
 | # | 항목 | 성공 기준 | 결과 | 상태 |
 |---|---|---|---|---|
-| a | Android 13 Flutter 오버레이 (10/18) | debug APK로 S20에서 Kakao·Meet 통화 화면 위에 버블이 10분 동안 유지된다. **오버레이 패키지명·버전을 pub.dev와 `pubspec.lock`으로 실제 확인해 기록**한다. `SYSTEM_ALERT_WINDOW` 권한 요청 흐름을 확인한다. Wi-Fi RSSI를 읽을 수 있고 필요한 권한을 기록한다. Wi-Fi 패널·인터넷 연결 패널이 열린다. 노트북 WS 연결 경로(LAN 또는 `adb reverse`)를 정한다 | Flutter 3.41.4 stable 설치 확인 (10/12). 나머지 미확인 | ⬜ |
+| a | Android 13 Flutter 오버레이 (10/18) | debug APK로 S20에서 Kakao·Meet 통화 화면 위에 버블이 10분 동안 유지된다. **오버레이 패키지명·버전을 pub.dev와 `pubspec.lock`으로 실제 확인해 기록**한다. `SYSTEM_ALERT_WINDOW` 권한 요청 흐름을 확인한다. Wi-Fi RSSI를 읽을 수 있고 필요한 권한을 기록한다. Wi-Fi 패널·인터넷 연결 패널이 열린다. 노트북 WS 연결 경로(LAN 또는 `adb reverse`)를 정한다 | **10/13 스파이크 (`overlay/`, 브랜치 `ml/overlay-spike`)**: Flutter 3.41.4, 패키지 **`flutter_overlay_window` 1.0.0**(pub.dev, iheb.tech, MIT). 다른 앱 위 버블 ✅, 권한 요청 흐름 ✅(`SYSTEM_ALERT_WINDOW`, 알림 권한), 더미 스트림 WS 수신 ✅(경로: **무선 adb + `adb reverse tcp:8000`** → 방화벽 변경 불필요), Wi-Fi·인터넷 설정 패널 ✅(`Settings.Panel`), [조치] 버튼 → 패널 ✅, 크기 작게/크게·닫기 버튼 ✅, **RSSI ✅**: `NetworkCapabilities.getSignalStrength()` + `ACCESS_NETWORK_STATE`(위치 권한 불필요. `WifiManager.connectionInfo`는 Android 13에서 위치 권한 없이 가려져 null). 발견한 플러그인 버그: ① 시작 위치를 안 주면 화면 위로 사라짐 ② 이미 떠 있을 때 다시 show하면 서비스가 멈춤 ③ 드래그 경계 계산 오류 → `overlay/third_party/flutter_overlay_window`(MIT 수정본, `MCQM_PATCH.md`)에서 ③ 수정, ①② 앱 쪽 우회. 남은 것: **Kakao·Meet 통화 위 10분 유지(☎)**, 버블 UI/UX 다듬기(→ 팀원 인계, 아래) | 🟡 |
 | b | `app_filter`로 오버레이 트래픽 제외 ☎ | Kakao 통화 중 `app_filter`=Kakao 패키지, 오버레이 WS 연결 상태로 2분 캡처한다. pcap에서 노트북 WS 포트(8000) 패킷 = **0개**이고, Kakao 패킷 수는 필터가 없을 때와 비슷하다 | | ⬜ |
 | 0 | 도구 설치 (Wireshark+Npcap, scrcpy, PCAPdroid, Clumsy) | 버전 출력, `adb devices`에 S20 | 10/13 winget 설치: tshark 4.6.9 ✅, Npcap 1.89 실행 중 ✅ (`tshark -D`에 Wi-Fi 등 인터페이스 표시), scrcpy 4.1 ✅, Clumsy 0.3 ✅. 남은 것: PCAPdroid(폰), `adb devices`에 S20 (폰 연결 필요). 경로·되돌리기는 `CLAUDE.local.md` | 🟡 |
 | 1 | vcaml 팀 repo 재현 | `pytest vcaml/tests` 50 passed + FPS×ip-udp-ml MAE 솔로(Meet 1.33/Teams 1.81/Webex 1.33) ±0.05 | 50 passed ✅. 10/13 학습 재현 (약 13분, 팀 repo `data/mlruns.db`): **Meet 1.334 / Teams 1.812 / Webex 1.328** (솔로와 차이 +0.004 / +0.002 / −0.002, 3개 평균 1.491, 논문 1.50). 학습 중 절전을 임시로 껐다가 복원. 솔로 DB 해시 불변 | ✅ |
@@ -67,7 +121,7 @@ M0 설계 메모 (M2 `features.py`에 반영):
 - vcaml 배치 윈도우는 "첫 패킷 + 1초 초과 시 새 윈도우"(가변 경계), 스트리밍은 고정 1초 격자 → 작은 차이 가능, M2에서 수치 비교.
 
 ## M1 — 더미 스트림 + 대시보드 뼈대 / vcaml 재현 수치 / SCHEMA v1.1 확정 (마감 10/26)
-## M2 — Replay 실시간 추론 + QoE + 판정 + 진단 v0 / Meet 정답 수집 (마감 11/6)
+## M2 — Replay 실시간 추론 + 지표별 판정 + 진단 v0 / Meet 정답 수집 / 충실도 스크립트 (마감 11/6)
 
 ### 선행 작업 (10/12 밤, 브랜치 `ml/m2-core`, Opus 5.5 xhigh)
 | # | 항목 | 결과 | 상태 |
@@ -134,14 +188,19 @@ v0의 Teams 실패 원인을 **Teams dev**에서 분석했다.
 - **발견 4 — 같은 규칙이 앱마다 다르게 듣는다.** 송신 패턴이 다르기 때문이다(Meet 약 30 pkt/s, Teams 약 270 pkt/s에 비트레이트 증가). 실제 Meet·Kakao 폰 통화에서도 앱별 임계값이 필요할 것으로 보인다 [가정]. 그래서 M4 Clumsy 실험을 dev와 test로 나눠 수집하는 것을 권장한다.
 - 원자료: v0 `data/diag/test/`, v0.1 `data/diag/v01_test/` (`summary_*.json`, `windows_*.csv`, git 제외).
 - 재현: `uv run python scripts/diag_synth.py --vca <vca> --split test --rtp`. 규칙만 바꿨다면 `--rescore data/diag/test/windows_<vca>_test_rtp.csv [--rtp] --out <폴더>`로 몇 초 만에 재채점할 수 있다.
-## M3 — Live + 캡처 충실도 + 정답 대비 정확도 (마감 11/13)
-## M4 — What-if + Meet·Kakao 교차 실험 + 원인 진단 정확도 + 결과표 (마감 11/20)
+## M3 — (v6) 평가: 정답 대비 정확도 + 원인 진단 + 오버헤드 (마감 11/16, W5)
+## M4 — (v6) Meet·Zoom 수집(손실·대역폭·CPU 조건표) + device_cpu 진단 (마감 11/9, W3–W4)
 ## M5 = Freeze — 테스트, README, 정적 데모, 녹화본, 데모 스크립트 (마감 11/24)
 
-## Flutter 오버레이 (담당 Sungmin)
+## Flutter 오버레이 (v6: 보관 — 개발 중단, Android 설계의 실측 근거)
+> v6(10/14)부터 오버레이는 더 개발하지 않는다. 아래 표의 11/8·11/15·11/20 항목은 취소. 브랜치 `ml/overlay-spike`만 보존.
 | 기한 | 내용 | 결과 | 상태 |
 |---|---|---|---|
-| 10/18 | Android 13 오버레이 권한·표시 확인 (= M0 a) | | ⬜ |
+| 10/18 | Android 13 오버레이 권한·표시 확인 (= M0 a) | 10/13 기능 확인 완료(위 M0-a). 통화 위 10분 유지만 ☎ 세션에서 | 🟡 |
 | 11/8 | 더미 스트림 연동 | | ⬜ |
 | 11/15 | Live 연동 | | ⬜ |
 | 11/20 | 표시 문구 확정 | | ⬜ |
+
+**버블 UI/UX 담당 (10/13 재결정): Sungmin이 직접 한다.** 어제(10/13 오전) 적은 "팀원 인계"는 취소한다.
+- 이유: 팀원은 주 3시간 정도이고 React 대시보드(최소 범위)에 집중한다. 오버레이는 Android 전용이라 팀원(Mac·iPhone)이 기기 시험을 할 수 없다.
+- 알려진 UX 과제(Sungmin): ① 크게 모드의 문구 밀도 ② 좌우 벽 없음(플러그인 `minVisibleWidth`, 한 줄) ③ 드래그 감각 ④ 색 외 글자로도 상태 구분(접근성) ⑤ 11/20 문구 확정
