@@ -34,7 +34,7 @@
 ## 일정 (발표 12/2, 동결 11/24) — v6
 | 주 | 기간 | 외부 일정 | 마감 | 나 — Python·실험 | 팀원 — Web | 상태 |
 |---|---|---|---|---|---|---|
-| **W1 파일럿** | 10/14–10/19 | | | 문서 v6. **P1** Meet 1통화 tshark 실시간 → 기존 모델 → 정답(webrtc dump) MAE. **P2** CPU 부하 3단계: "패킷 정상, fps 하락" 확인. **P3** H1 모니터 on/off. **P4** Zoom 정답(화면 녹화 fps, Statistics 창 내보내기 여부) | SCHEMA v1.2 + device 리뷰, `dashboard/` scaffold | 🟡 P1·P2·P3 완료(아래 "W1 파일럿 결과"), P4 대기 |
+| **W1 파일럿** | 10/14–10/19 | | | 문서 v6. **P1** Meet 1통화 tshark 실시간 → 기존 모델 → 정답(webrtc dump) MAE. **P2** CPU 부하 3단계: "패킷 정상, fps 하락" 확인. **P3** H1 모니터 on/off. **P4** Zoom 정답(화면 녹화 fps, Statistics 창 내보내기 여부) | SCHEMA v1.2 + device 리뷰, `dashboard/` scaffold | 🟡 ✅ P1–P4 완료(아래 "W1 파일럿 결과") |
 | W2 | 10/20–10/26 | **Midterm 1 (10/21)** | | `capture/tshark_live.py`, `judge.py`, FastAPI WS(Live·Replay), psutil 수집기 | WS 클라이언트, `parseMessage`+Vitest, 판정 배지, 차트 | ⬜ |
 | W3 | 10/27–11/2 | | | Meet ≈30통화 수집(조건표), clumsy2 설치·확정 | 추정·정답 겹침 차트 | ⬜ |
 | W4 | 11/3–11/9 | | | Zoom ≈15통화, `diagnosis.py` v1(`device_cpu`) | 원인·근거 카드, CPU 게이지 | ⬜ |
@@ -47,7 +47,7 @@
 
 v5 모바일 일정(E1 충실도, E2 정확도, E3 진단, Flutter 오버레이 마일스톤)은 git 이력(커밋 4bfda7b)에 있다.
 
-## W1 파일럿 결과 (10/15) — P1·P2·P3 완료, P4 대기
+## W1 파일럿 결과 (10/15) — P1–P4 완료
 도구: `scripts/pilot_live.py`(tshark 실시간 → 모델 → CSV, psutil 1 Hz, 정답 비교), `scripts/cpu_load.py`(busy loop + `--pin N` Chrome 코어 제한). 데이터는 `data/pilot/`(git 제외). 환경: Windows 노트북 Wi-Fi 수신, 상대 S20 Meet 앱(P2P 직접 연결), 노트북 Chrome.
 
 **P1 — Meet 실시간 추정 vs webrtc-internals 정답 (196초)**
@@ -80,6 +80,13 @@ v5 모바일 일정(E1 충실도, E2 정확도, E3 진단, Flutter 오버레이 
 | 송신 fps | 29.16 | 28.76 |
 - 결론: **H1은 데스크톱에서 기각** — 모니터 CPU 약 1.3%, 통화 지표 차이는 단계 간 변동 안. 기준(fps 차이 < 1, CPU < 10%) 통과. 모델 1회 추론 p50 81 ms·p95 126 ms(배터리 상태, 벤치 36 ms보다 느림 [추정: CPU 속도 제한]).
 - 한계: 통화 1건, 각 3회, 배터리 상태. W5에서 반복해 발표용 표로 만든다.
+
+**P4 — Zoom 정답 가능성 (Zoom 데스크톱 7.2.1, 노트북 수신, 상대 S20 Zoom 앱, 1통화)**
+- 패킷: tshark로 잡힌다. **Zoom은 서버 경유**(`170.114.190.137:8801`, UDP), 수신 약 1.9 Mbps, 초당 약 200패킷. Meet(P2P)와 경로가 다르다.
+- 통계 창(설정 → 통계 → 비디오): 지연·지터·패킷 손실·해상도·fps가 송신/수신 따로 나온다(수신 24→23 fps, 480×640, 지연 46–51 ms, 지터 1 ms, 손실 0%). **파일 내보내기 없음**, fps는 정수, 갱신 주기 [미확인]. 통화 밖에서는 CPU·메모리만 표시. 자동 수집하려면 주기 캡처 + OCR 필요(Windows 기본 OCR 사용 가능 여부 [미확인]).
+- 화면 녹화(Game Bar 30 fps, 20초): 수신 영상 타일만 잘라 프레임 간 차이로 센 fps가 임계값에 크게 의존(0.05→24.7, 0.1→19.4, 0.3→17.2; 통계 창 23–24). 낮은 임계값에서만 일치. 개선안: S20 화면에 스톱워치처럼 매 프레임이 바뀌는 것을 비추고 60 fps로 녹화.
+- 도구: opencv-python을 `uv run --with`로 임시 사용(프로젝트 의존성 변경 없음, 승인 10/15). 되돌리기 `uv cache clean opencv-python`.
+- 결론(제안): Zoom 정답 = **통계 창 값(주) + 화면 녹화 교차 검증(소수 통화)**. 정수 fps·갱신 주기 미확인이라 Meet보다 거친 **근사 정답**으로 표기한다. Meet 모델의 Zoom 추정(fps 약 18)은 통계 창(23–24)과 달라 Zoom도 재학습이 필요하다. 모니터 CPU 0.9%.
 
 ## Bootstrap (10/12)
 | 항목 | 결과 | 상태 |
