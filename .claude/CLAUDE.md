@@ -20,7 +20,8 @@
 
 ## 전역 규칙의 예외
 - 웹 조회 사전 승인 불필요 범위: github.com/noise-lab/vcaml, w3c.github.io/webrtc-stats,
-  PCAPdroid/scrcpy/gnirehtet/Clumsy 공식 repo·문서, scikit-learn/FastAPI/Vite/Chart.js 공식 문서.
+  PCAPdroid/scrcpy/gnirehtet/Clumsy 공식 repo·문서, scikit-learn/FastAPI/Vite/Chart.js 공식 문서,
+  www.itu.int (G.1070 등 QoE 표준), pub.dev (Flutter 패키지) — 2026-10-13 승인.
   그 외 사이트와 모든 커넥터는 전역 규칙대로 먼저 묻기
 
 ## 추가 규칙
