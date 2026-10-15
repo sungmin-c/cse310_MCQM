@@ -34,7 +34,7 @@
 ## 일정 (발표 12/2, 동결 11/24) — v6
 | 주 | 기간 | 외부 일정 | 마감 | 나 — Python·실험 | 팀원 — Web | 상태 |
 |---|---|---|---|---|---|---|
-| **W1 파일럿** | 10/14–10/19 | | | 문서 v6. **P1** Meet 1통화 tshark 실시간 → 기존 모델 → 정답(webrtc dump) MAE. **P2** CPU 부하 3단계: "패킷 정상, fps 하락" 확인. **P3** H1 모니터 on/off. **P4** Zoom 정답(화면 녹화 fps, Statistics 창 내보내기 여부) | SCHEMA v1.2 + device 리뷰, `dashboard/` scaffold | 🟡 P1·P2 완료(아래 "W1 파일럿 결과"), P3·P4 대기 |
+| **W1 파일럿** | 10/14–10/19 | | | 문서 v6. **P1** Meet 1통화 tshark 실시간 → 기존 모델 → 정답(webrtc dump) MAE. **P2** CPU 부하 3단계: "패킷 정상, fps 하락" 확인. **P3** H1 모니터 on/off. **P4** Zoom 정답(화면 녹화 fps, Statistics 창 내보내기 여부) | SCHEMA v1.2 + device 리뷰, `dashboard/` scaffold | 🟡 P1·P2·P3 완료(아래 "W1 파일럿 결과"), P4 대기 |
 | W2 | 10/20–10/26 | **Midterm 1 (10/21)** | | `capture/tshark_live.py`, `judge.py`, FastAPI WS(Live·Replay), psutil 수집기 | WS 클라이언트, `parseMessage`+Vitest, 판정 배지, 차트 | ⬜ |
 | W3 | 10/27–11/2 | | | Meet ≈30통화 수집(조건표), clumsy2 설치·확정 | 추정·정답 겹침 차트 | ⬜ |
 | W4 | 11/3–11/9 | | | Zoom ≈15통화, `diagnosis.py` v1(`device_cpu`) | 원인·근거 카드, CPU 게이지 | ⬜ |
@@ -47,7 +47,7 @@
 
 v5 모바일 일정(E1 충실도, E2 정확도, E3 진단, Flutter 오버레이 마일스톤)은 git 이력(커밋 4bfda7b)에 있다.
 
-## W1 파일럿 결과 (10/15) — P1·P2 완료, P3·P4 대기
+## W1 파일럿 결과 (10/15) — P1·P2·P3 완료, P4 대기
 도구: `scripts/pilot_live.py`(tshark 실시간 → 모델 → CSV, psutil 1 Hz, 정답 비교), `scripts/cpu_load.py`(busy loop + `--pin N` Chrome 코어 제한). 데이터는 `data/pilot/`(git 제외). 환경: Windows 노트북 Wi-Fi 수신, 상대 S20 Meet 앱(P2P 직접 연결), 노트북 Chrome.
 
 **P1 — Meet 실시간 추정 vs webrtc-internals 정답 (196초)**
@@ -67,6 +67,19 @@ v5 모바일 일정(E1 충실도, E2 정확도, E3 진단, Flutter 오버레이 
 - 결론: (1) vcaml 라벨인 수신 fps는 기기 병목을 못 본다 → **device_cpu 정답은 freeze·디코드 시간·송신 fps로 정의**한다. (2) 부하는 busy loop보다 **코어 제한이 효과적** → W3 조건표에 사용. (3) `qualityLimitationReason`은 송신 fps가 3.5로 떨어져도 끝까지 `none` → **기기 원인의 정답으로 쓸 수 없다.**
 - 한계: 각 조건 1회, 단계 안에서 시간에 따라 변함(적응). P2-2의 "부하 0%" 단계도 이미 2코어 제한 상태. 통계적 주장은 W3 반복 수집 뒤에 한다.
 - 사고 기록: `cpu_load.py --pin` 첫 버전이 종료 시 Chrome affinity를 복원하지 못했다(묶인 뒤 뜬 자식 프로세스가 2코어를 물려받음). 수동으로 전체 코어 복원 후 확인, 스크립트는 항상 전체 코어로 복원하도록 수정. 되돌리기: Chrome 완전 종료 후 재실행.
+
+**P3 — 모니터 on/off 오버헤드 (H1), Meet 1통화, 배터리 상태**
+- 방법: `scripts/overhead_ab.py`가 한 통화에서 모니터(tshark + 모델 + psutil)를 끔/켬 50초씩 3번 번갈아 실행(앞 150초는 연결 전환 대기, 제외). 통화 쪽은 webrtc-internals dump로 단계별 비교.
+| 지표 (단계 평균, 각 3회) | 끔 | 켬 |
+|---|---|---|
+| 모니터 CPU(tshark+python) | — | **1.27%** (±0.31) |
+| Chrome CPU / 전체 CPU | 9.2% / 22.7% | 8.9% / 23.7% |
+| 수신 fps / 디코드 fps | 28.16 / 29.78 | 28.20 / 29.79 |
+| 디코드 시간 | 5.78 ms | 5.70 ms |
+| freeze / 드롭 | 0.05 / 0 | 0 / 0 |
+| 송신 fps | 29.16 | 28.76 |
+- 결론: **H1은 데스크톱에서 기각** — 모니터 CPU 약 1.3%, 통화 지표 차이는 단계 간 변동 안. 기준(fps 차이 < 1, CPU < 10%) 통과. 모델 1회 추론 p50 81 ms·p95 126 ms(배터리 상태, 벤치 36 ms보다 느림 [추정: CPU 속도 제한]).
+- 한계: 통화 1건, 각 3회, 배터리 상태. W5에서 반복해 발표용 표로 만든다.
 
 ## Bootstrap (10/12)
 | 항목 | 결과 | 상태 |
