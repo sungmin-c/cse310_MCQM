@@ -34,7 +34,7 @@
 ## 일정 (발표 12/2, 동결 11/24) — v6
 | 주 | 기간 | 외부 일정 | 마감 | 나 — Python·실험 | 팀원 — Web | 상태 |
 |---|---|---|---|---|---|---|
-| **W1 파일럿** | 10/14–10/19 | | | 문서 v6. **P1** Meet 1통화 tshark 실시간 → 기존 모델 → 정답(webrtc dump) MAE. **P2** CPU 부하 3단계: "패킷 정상, fps 하락" 확인. **P3** H1 모니터 on/off. **P4** Zoom 정답(화면 녹화 fps, Statistics 창 내보내기 여부) | SCHEMA v1.2 + device 리뷰, `dashboard/` scaffold | 🟡 |
+| **W1 파일럿** | 10/14–10/19 | | | 문서 v6. **P1** Meet 1통화 tshark 실시간 → 기존 모델 → 정답(webrtc dump) MAE. **P2** CPU 부하 3단계: "패킷 정상, fps 하락" 확인. **P3** H1 모니터 on/off. **P4** Zoom 정답(화면 녹화 fps, Statistics 창 내보내기 여부) | SCHEMA v1.2 + device 리뷰, `dashboard/` scaffold | 🟡 P1·P2 완료(아래 "W1 파일럿 결과"), P3·P4 대기 |
 | W2 | 10/20–10/26 | **Midterm 1 (10/21)** | | `capture/tshark_live.py`, `judge.py`, FastAPI WS(Live·Replay), psutil 수집기 | WS 클라이언트, `parseMessage`+Vitest, 판정 배지, 차트 | ⬜ |
 | W3 | 10/27–11/2 | | | Meet ≈30통화 수집(조건표), clumsy2 설치·확정 | 추정·정답 겹침 차트 | ⬜ |
 | W4 | 11/3–11/9 | | | Zoom ≈15통화, `diagnosis.py` v1(`device_cpu`) | 원인·근거 카드, CPU 게이지 | ⬜ |
@@ -46,6 +46,27 @@
 일정 리스크: 통화 30–45건은 S20 단독이라 시간이 직접 든다(약 2.5–4시간 + 설정). W3–W4에 몰리므로 W2에서 자동화 스크립트를 먼저 만든다. 동결 다음 날이 Midterm 2이므로 M5 작업은 W6 안에 끝낸다.
 
 v5 모바일 일정(E1 충실도, E2 정확도, E3 진단, Flutter 오버레이 마일스톤)은 git 이력(커밋 4bfda7b)에 있다.
+
+## W1 파일럿 결과 (10/15) — P1·P2 완료, P3·P4 대기
+도구: `scripts/pilot_live.py`(tshark 실시간 → 모델 → CSV, psutil 1 Hz, 정답 비교), `scripts/cpu_load.py`(busy loop + `--pin N` Chrome 코어 제한). 데이터는 `data/pilot/`(git 제외). 환경: Windows 노트북 Wi-Fi 수신, 상대 S20 Meet 앱(P2P 직접 연결), 노트북 Chrome.
+
+**P1 — Meet 실시간 추정 vs webrtc-internals 정답 (196초)**
+| 지표 | 정답 | 추정 | 오차 |
+|---|---|---|---|
+| fps | 29.4 | 20.4 | **MAE 9.09** (vcaml 재현 1.33) |
+| bitrate | 1932 kbps | 331 kbps | 약 6배 과소 |
+| frameHeight | 1280 | 270 | 정확도 0% |
+- 시간 정렬 문제 아님(±3초 이동해도 MAE 불변). 패킷에서 직접 계산한 수신 bitrate는 2111 kbps로 정답과 비슷 → **캡처는 정상, 모델이 학습 범위를 벗어남**. in-lab Meet 40통화 표본: bitrate 중앙값 125·최대 566 kbps, 높이 180/270/360뿐, 우리 통화는 1.9 Mbps·1280·30 fps.
+- 결론: 논문의 in-lab → real-world 이전 실패(MAE 12.41)와 같은 양상. **W3 수집 데이터로 재학습이 필요하다** (통화 단위 분리). 이 결과 자체를 발표 소재로 쓴다.
+- 정답 파서 주의: Meet는 통화 중 PeerConnection을 갈아탄다(예: 540p 800 kbps → 720p/1280 2 Mbps). vcaml `WebRTCReader`는 첫 PC만 읽어 fps 0이 나온다 → `pilot_live.py compare`가 캡처 구간에 fps>0이 가장 많은 PC를 고른다. **수집 단계에서도 같은 처리 필요.**
+- 모니터 오버헤드(P3 예비): tshark+python CPU 평균 1.4%, 최대 2.5%. tick 추론 약 110 ms(전체 CPU 부하 상태에서 측정, 벤치 36 ms와 다름 [미확인 원인]).
+
+**P2 — CPU 부하에서 "패킷 정상, 품질 하락"이 보이는가**
+- P2-1 (busy loop 18프로세스, 배터리 → 충전기 연결): 총 CPU 89%까지 올라도 수신 fps 28.6–29.9 유지, 드롭·freeze 0. **디코드 시간 1.5 → 12.5 ms(약 8배)**로 신호는 있었다(소프트웨어 디코더, `powerEfficientDecoder=false`).
+- P2-2 (Chrome을 2코어로 제한, **배터리 상태**): 제한 직후 45초간 디코드 시간 6.6 → 최대 57 ms, **freeze 36회**, 송신 fps 16.5 → 3.5, 패킷 수·bitrate는 정상. 이후 Chrome이 적응해 안정. 수신 fps(`framesReceived/s`)는 끝까지 27.7–29.7.
+- 결론: (1) vcaml 라벨인 수신 fps는 기기 병목을 못 본다 → **device_cpu 정답은 freeze·디코드 시간·송신 fps로 정의**한다. (2) 부하는 busy loop보다 **코어 제한이 효과적** → W3 조건표에 사용. (3) `qualityLimitationReason`은 송신 fps가 3.5로 떨어져도 끝까지 `none` → **기기 원인의 정답으로 쓸 수 없다.**
+- 한계: 각 조건 1회, 단계 안에서 시간에 따라 변함(적응). P2-2의 "부하 0%" 단계도 이미 2코어 제한 상태. 통계적 주장은 W3 반복 수집 뒤에 한다.
+- 사고 기록: `cpu_load.py --pin` 첫 버전이 종료 시 Chrome affinity를 복원하지 못했다(묶인 뒤 뜬 자식 프로세스가 2코어를 물려받음). 수동으로 전체 코어 복원 후 확인, 스크립트는 항상 전체 코어로 복원하도록 수정. 되돌리기: Chrome 완전 종료 후 재실행.
 
 ## Bootstrap (10/12)
 | 항목 | 결과 | 상태 |

@@ -1,4 +1,4 @@
-# Task: Desktop Call Quality Monitor — 네트워크 vs 기기 원인 진단 + 실시간 추정 (CSE310 Final, vcaml 기반)
+# Task: MCQM — Multi-layer Call Quality Monitor: 네트워크 vs 기기 원인 진단 + 실시간 추정 (CSE310 Final, vcaml 기반)
 
 > **v6 (2026-10-14)**: 교수님 면담 결과 반영 — **데스크톱(Windows) 우선**, 12/2까지 데스크톱 MVP 구현·검증, **Android는 설계와 실현 가능성 분석까지만**(구현 없음), 측정 대상은 Windows의 **Google Meet·Zoom**, 최종 화면은 **웹 대시보드**(네이티브 앱 없음). v5(모바일 측정 타당성)는 폐기하지 않고 Android 설계의 실측 근거로 보관한다. 계획 근거는 `docs/PROGRESS.md`의 "방향 재설정 v6".
 > v5 (10/13), v4 (10/12) 이력은 git log와 `docs/PROGRESS.md`에 있다. 메시지 계약은 `docs/SCHEMA.md`.
