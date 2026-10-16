@@ -38,6 +38,13 @@ class WindowFeatures:
         self._win_prev = 0.0     # 현재 윈도우 시작 직전 패킷 rel
         self.last_epoch = None   # 마지막 수락 패킷 epoch (Live에서 무패킷 감지용)
 
+    @property
+    def receiver(self):
+        """수신자로 보는 dst IP. dst_ip가 없으면 지금까지 UDP 바이트가 가장 많은 dst (없으면 None)."""
+        if self.dst_ip is not None:
+            return self.dst_ip
+        return max(self._dst_bytes, key=self._dst_bytes.get, default=None)
+
     def push(self, epoch, rel, ip_dst, ip_proto, udp_length):
         """패킷 1개. 이 패킷이 직전 윈도우를 닫으면 그 윈도우의 feature를, 아니면 None."""
         if ip_proto != self.udp_proto:

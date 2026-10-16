@@ -144,10 +144,7 @@ def process_lines(lines, models, emit, *, dst_ip=None, packet_writer=None, windo
                     estimate(w)
                 if (feature_emit is not None and r[3] == window_features.udp_proto
                         and r[4] > window_features.video_thresh):
-                    target = window_features.dst_ip
-                    if target is None:
-                        target = max(window_features._dst_bytes,
-                                     key=window_features._dst_bytes.get, default=None)
+                    target = window_features.receiver
                     source, port = fields[2], fields[6]
                     if r[2] == target and source and port and "," not in source and "," not in port:
                         flow = (source, int(port))
@@ -201,6 +198,6 @@ def capture(a):
             samp.join(2)
         pk.close()
         es.close()
-        print("dst ip:", wf.dst_ip or max(wf._dst_bytes, key=wf._dst_bytes.get, default=None))
+        print("dst ip:", wf.receiver)
 
 
