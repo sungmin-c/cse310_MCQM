@@ -100,13 +100,15 @@ def parse(fields):
     return float(epoch), float(rel), dst, int(proto), float(ulen) if ulen and "," not in ulen else 0.0
 
 
-def process_lines(lines, models, emit, *, dst_ip=None, packet_writer=None, window_features=None):
+def process_lines(lines, models, emit, *, dst_ip=None, packet_writer=None, window_features=None,
+                  feature_emit=None):
     """tshark 탭 구분 라인 iterable을 처리하고 윈도우마다 emit(row)을 호출한다.
 
     row는 et, n_pkts, METRICS의 원시 예측값, tick_ms를 담는다 (CSV 반올림은 호출자 담당).
     models는 load_models() 형식. packet_writer는 선택적인 csv.writer이며 원본 14필드를 쓴다.
     EOF·중단 시 마지막 윈도우도 내보낸다. 파일·프로세스는 열지 않는다.
     window_features를 주면 해당 인스턴스를 쓰고, 없으면 WindowFeatures를 만든다.
+    feature_emit(row, w)는 진단용 feature를 함께 받는다. None 라인은 idle flush 신호다.
     """
     if window_features is None:
         from server.features import WindowFeatures
@@ -116,11 +118,18 @@ def process_lines(lines, models, emit, *, dst_ip=None, packet_writer=None, windo
         t = time.perf_counter()
         pred = {m: float(est.predict(w[cols])[0]) for m, (est, cols) in models.items()}
         ms = (time.perf_counter() - t) * 1000
-        emit({"et": int(w["et"].iloc[0]), "n_pkts": int(w["l_num_pkts"].iloc[0]),
-              **pred, "tick_ms": ms})
+        row = {"et": int(w["et"].iloc[0]), "n_pkts": int(w["l_num_pkts"].iloc[0]),
+               **pred, "tick_ms": ms}
+        emit(row)
+        if feature_emit is not None:
+            feature_emit(row, w)
 
     try:
         for line in lines:
+            if line is None:
+                if (w := window_features.flush()) is not None:
+                    estimate(w)
+                continue
             fields = line.rstrip("\n").split("\t")
             if len(fields) < len(FIELDS):
                 continue

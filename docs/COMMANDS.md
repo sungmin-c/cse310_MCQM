@@ -46,4 +46,16 @@
 | 목적 | 명령 | 확인 |
 |---|---|---|
 | 더미 스트림 (SCHEMA v1) | `uv run server/dummy_stream.py` (`--app kakao_voice --mode whatif` 등) | 터미널에 `dummy stream: ws://localhost:8000/ws` 출력 |
+| WS Replay (기본 SCHEMA v1) | `uv run --no-sync python -m server.app --replay data/pilot/<name>_pkts.csv --truth data/pilot/<dump>.json --os data/pilot/<name>_os.csv` | `ws://localhost:8000/ws`에 연결 후 원래 캡처 시각의 tick. truth·os는 선택 |
+| WS Live (사용자 실측) | `uv run --with psutil python -m server.app --live --iface Wi-Fi --dst <노트북IP>` | 내 노트북 수신 UDP만. Live truth는 null |
 | 대시보드 | `npm --prefix dashboard run dev` | 브라우저에서 Vite 주소 열기 |
+
+WS는 첫 클라이언트 연결 때 입력을 시작하며 모든 연결이 같은 입력을 공유한다. Replay는 `--speed 0`이면 대기 없이 재생하고, `--loop`이면 세션 판정 상태를 초기화해 반복한다. 기본 포트 8000(`--port`), 앱 `meet`(`--app zoom`은 모델 추정값). `--schema v1.2`는 팀원 미승인 제안 필드를 켜는 개발 옵션이다.
+
+WS 실행에는 `fastapi`, `uvicorn`, WebSocket transport(`websockets` 또는 `wsproto`)가 필요하다. 기존 환경에 없는 패키지의 설치·직접 의존성 등록은 사람이 처리한다. `pyproject.toml`·`uv.lock`은 T4에서 변경하지 않는다. Live v1.2 OS 샘플에는 `psutil`도 필요하다. 서버는 로컬 주소에서만 수신하며 종료는 Ctrl+C다.
+
+worktree 테스트는 해당 worktree 루트에서 공유 환경으로 실행한다:
+```powershell
+$env:UV_PROJECT_ENVIRONMENT = 'C:\Users\okggg\Desktop\CSE 310\cse310_MCQM\.venv'
+uv run --no-sync pytest tests/ -q
+```
