@@ -53,3 +53,4 @@
 - judge 임계값 근거: 표준(G.1070) vs 수집 데이터 분위수 (docs/design/judge.md 하단, 권장: [가정]값 시작 → W3 후 보정)
 - AGENTS.md·.claude/CLAUDE.md 외부 수정(규칙 통합, Codex 기본값 luna·Fast)과 `docs/design/agent_permissions.md`를 10/16 저녁 문서 PR #5에 반영(공동 승인 필요). `.codex/`는 개인 설정이라 .gitignore에 추가
 - Meet 경로 표기: PROGRESS W1 "P2P 직접 연결"은 P2-1 원자료와 다름(relay `142.250.82.215:3478`로 시작 → 통화 중 P2P 전환). PROGRESS는 공동 승인 파일이라 다음 PROGRESS PR에서 고치길 권장
+- PR 본문 편집(`gh pr edit`)·댓글이 권한에서 거부됨. 사람이 PR #5 본문 끝 "공동 승인 필요"에 `.gitignore`(`.codex/` 추가, `37cd545`)를 덧붙이고, PR #6에 `31243bf`(RTP 휴리스틱) 리뷰를 Codex에 요청
