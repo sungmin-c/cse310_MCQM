@@ -108,11 +108,13 @@ def process_lines(lines, models, emit, *, dst_ip=None, packet_writer=None, windo
     models는 load_models() 형식. packet_writer는 선택적인 csv.writer이며 원본 14필드를 쓴다.
     EOF·중단 시 마지막 윈도우도 내보낸다. 파일·프로세스는 열지 않는다.
     window_features를 주면 해당 인스턴스를 쓰고, 없으면 WindowFeatures를 만든다.
-    feature_emit(row, w)는 진단용 feature를 함께 받는다. None 라인은 idle flush 신호다.
+    feature_emit(row, w, flow)는 진단용 feature와 직전 창의 주 흐름을 받는다. None 라인은 idle flush 신호다.
     """
     if window_features is None:
         from server.features import WindowFeatures
         window_features = WindowFeatures(vca="meet", dst_ip=dst_ip)
+
+    flows = {}
 
     def estimate(w):
         t = time.perf_counter()
@@ -122,7 +124,8 @@ def process_lines(lines, models, emit, *, dst_ip=None, packet_writer=None, windo
                **pred, "tick_ms": ms}
         emit(row)
         if feature_emit is not None:
-            feature_emit(row, w)
+            feature_emit(row, w, max(flows, key=flows.get, default=None))
+        flows.clear()
 
     try:
         for line in lines:
@@ -136,8 +139,19 @@ def process_lines(lines, models, emit, *, dst_ip=None, packet_writer=None, windo
             if packet_writer is not None:
                 packet_writer.writerow(fields)
             r = parse(fields)
-            if r is not None and (w := window_features.push(*r)) is not None:
-                estimate(w)
+            if r is not None:
+                if (w := window_features.push(*r)) is not None:
+                    estimate(w)
+                if (feature_emit is not None and r[3] == window_features.udp_proto
+                        and r[4] > window_features.video_thresh):
+                    target = window_features.dst_ip
+                    if target is None:
+                        target = max(window_features._dst_bytes,
+                                     key=window_features._dst_bytes.get, default=None)
+                    source, port = fields[2], fields[6]
+                    if r[2] == target and source and port and "," not in source and "," not in port:
+                        flow = (source, int(port))
+                        flows[flow] = flows.get(flow, 0.0) + r[4]
     finally:
         if (w := window_features.flush()) is not None:
             estimate(w)

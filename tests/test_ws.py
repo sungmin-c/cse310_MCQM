@@ -214,8 +214,8 @@ def test_broadcast_runs_once_and_survives_one_disconnect(packets):
 
 def test_v12_os_uses_latest_past_sample_and_expires_after_two_seconds(packets, tmp_path):
     os_csv = tmp_path / "synthetic_os.csv"
-    os_csv.write_text("ts,cpu_pct,call_proc_cpu_pct,monitor_cpu_pct,mem_pct\n"
-                      "1000,10,2,1,50\n1001,20,3,1,60\n1005,99,99,99,99\n")
+    os_csv.write_text("ts,cpu_pct,call_proc_cpu_pct,monitor_cpu_pct,mem_pct,call_core_pct\n"
+                      "1000,10,2,1,50,10\n1001,20,3,1,60,20\n1005,99,99,99,99,99\n")
 
     async def run():
         async with session(packets, "--schema", "v1.2", "--os", str(os_csv)) as (app, sockets):
@@ -230,8 +230,54 @@ def test_v12_os_uses_latest_past_sample_and_expires_after_two_seconds(packets, t
             check(v1)
             assert "validated" not in tick["judgement"]
             assert {"cause", "confidence"} <= tick["diagnosis"].keys()
-        expected = {"cpu_pct": 20, "proc_cpu_pct": 3, "mem_pct": 60}
+        expected = {"cpu_pct": 20, "proc_cpu_pct": 3, "mem_pct": 60, "call_core_pct": 20}
         assert [tick["device"] for tick in ticks] == [expected, expected, expected, None]
+
+    asyncio.run(run())
+
+
+def test_v12_old_os_csv_sets_device_to_none(packets, tmp_path):
+    os_csv = tmp_path / "old_os.csv"
+    os_csv.write_text("ts,cpu_pct,call_proc_cpu_pct,monitor_cpu_pct,mem_pct\n"
+                      "1000,10,2,1,50\n", encoding="utf-8")
+
+    async def run():
+        async with session(packets, "--schema", "v1.2", "--os", str(os_csv)) as (app, sockets):
+            socket = Socket(app)
+            sockets.append(socket)
+            await socket.accepted()
+            ticks = await socket.rest()
+        assert ticks and all(tick["device"] is None for tick in ticks)
+        assert all(tick["diagnosis"]["cause"] != "device_cpu" for tick in ticks)
+
+    asyncio.run(run())
+
+
+def test_replay_passes_flow_and_call_core_pct_to_diagnoser(tmp_path):
+    packets = tmp_path / "cpu_pkts.csv"
+    with packets.open("w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(FIELDS)
+        for i in range(300):
+            rel = i / 10
+            writer.writerow([rel, 1000 + rel, "sender", "receiver", 17, 1028,
+                             5000, 5001, 1000, "123", 100, i, 96, 0])
+    os_csv = tmp_path / "cpu_os.csv"
+    os_csv.write_text("ts,cpu_pct,call_proc_cpu_pct,monitor_cpu_pct,mem_pct,call_core_pct\n"
+                      + "".join(f"{1000 + i},25,10,1,50,95\n" for i in range(31)), encoding="utf-8")
+
+    async def run():
+        async with session(packets, "--schema", "v1.2", "--os", str(os_csv)) as (app, sockets):
+            socket = Socket(app)
+            sockets.append(socket)
+            await socket.accepted()
+            ticks = await socket.rest()
+        assert len(ticks) >= 20
+        cpu_ticks = [tick for tick in ticks if tick["diagnosis"]["cause"] == "device_cpu"]
+        assert cpu_ticks
+        assert all(tick["device"]["call_core_pct"] == 95 for tick in ticks)
+        assert all(tick["device"]["proc_cpu_pct"] == 10 for tick in ticks)
+        assert all(tick["diagnosis"]["confidence"] > 0 for tick in cpu_ticks)
 
     asyncio.run(run())
 
