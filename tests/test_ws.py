@@ -1,9 +1,12 @@
-"""실제 캡처·모델·소켓 없이 ASGI Replay 계약을 검증한다."""
+"""실제 캡처·모델·WebSocket 연결 없이 ASGI Replay 계약을 검증한다."""
 import asyncio
 import csv
 import json
+import socket
+import sys
 import threading
 from contextlib import asynccontextmanager
+from functools import partial
 
 import pandas as pd
 import pytest
@@ -11,6 +14,48 @@ import pytest
 from capture.tshark_live import FIELDS
 from server import app as ws_app
 from test_schema_contract import check
+
+
+def _socketpair_with_retry(make_pair, *args, **kwargs):
+    # shortcut: 테스트의 10014만 최대 5회 시도; Winsock 원인 해결 뒤 제거한다.
+    for attempt in range(5):
+        try:
+            return make_pair(*args, **kwargs)
+        except OSError as exc:
+            if getattr(exc, "winerror", None) != 10014 or attempt == 4:
+                raise
+
+
+@pytest.fixture(autouse=True)
+def retry_windows_socketpair(monkeypatch):
+    if sys.platform == "win32":
+        monkeypatch.setattr(socket, "socketpair",
+                            partial(_socketpair_with_retry, socket.socketpair))
+
+
+@pytest.mark.parametrize("winerror,failures,expected_calls", [
+    (10014, 0, 1), (10014, 1, 2), (10014, 4, 5),
+    (10014, 5, 5), (10013, 1, 1), (None, 1, 1),
+])
+def test_socketpair_retry_is_bounded_and_preserves_errors(winerror, failures, expected_calls):
+    calls = []
+    pair = (object(), object())
+    error = OSError(10014, "synthetic socketpair failure")
+    error.winerror = winerror
+
+    def make_pair(*args, **kwargs):
+        calls.append((args, kwargs))
+        if len(calls) <= failures:
+            raise error
+        return pair
+
+    if expected_calls > failures:
+        assert _socketpair_with_retry(make_pair, socket.AF_INET, proto=0) is pair
+    else:
+        with pytest.raises(OSError) as caught:
+            _socketpair_with_retry(make_pair, socket.AF_INET, proto=0)
+        assert caught.value is error
+    assert calls == [((socket.AF_INET,), {"proto": 0})] * expected_calls
 
 
 class FakeModel:
