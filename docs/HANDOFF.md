@@ -3,10 +3,10 @@
 > 마일스톤·결과 수치 → PROGRESS.md / 실험·결정 이력 → PROJECT_LOG.md / 여기는 "지금 누가 무엇을" 만.
 > 완료 항목은 한 줄로 줄여 PROJECT_LOG에 옮기고 여기서 지운다.
 
-## 현재 상태 (갱신: 2026-10-16 저녁, Claude)
-- 주차: W2 (10/20–10/26, Midterm 1 10/21). draft PR #5(문서)·#6(T1)·#7(T3b) 병합 대기. **T4는 Codex가 `mcqm-wt-T4`에서 진행 중**(미커밋 확인). T8 설계 완료 → T8b 착수 가능
+## 현재 상태 (갱신: 2026-10-16, Codex T8b)
+- 주차: W2 (10/20–10/26, Midterm 1 10/21). draft PR #5(문서)·#6(T1)·#7(T3b) 병합 대기. **T4 HEAD `1ed0fd9`는 T3b merge, 구현 미커밋·PASS 없음**. T8b ①② 커밋·push·리뷰 PASS(`ml/t8b-diag-v1`), ③은 T4 대기
 - 이번 세션 발견: P2P 흐름 포트가 49152를 넘으면 tshark가 RTP를 해석 못 함 → T1에 수정 커밋 `31243bf`(PR #6). 코어 고정 시 CPU%가 낮게 보임 → `call_core_pct` 설계
-- 마지막 작업자: Claude (S5: T8 설계, P2 재분석, T1 RTP 수정)
+- 마지막 작업자: Codex (T4 상태 확인, T8b ①② 구현 사본·테스트·적용 패치 준비)
 
 ## 역할과 모델/effort 추천표 (시작값. 결과가 나쁘면 한 단계 올리고 이유를 아래 기록에 남긴다)
 | 작업 유형 | 담당 | 모델 · effort | 이유 |
@@ -30,9 +30,11 @@
 | T6 | SCHEMA v1.2 제안 → `docs/design/schema_v1.2_proposal.md` | Claude → 팀원(Web) 확인 | ⏳ 팀원 답 대기 (Q1–Q9, Q9 = `call_core_pct` 10/16 추가) | 제안 문서 §4 | 승인 후 §5 반영 PR |
 | T7 | W3 수집 절차 → `docs/design/w3_collection.md` | Claude ✅ → 사용자 실측 | ⬜ S0 사전 점검부터 | 절차 문서 | 30통화 `ok` |
 | T8 | diagnosis v1 (`device_cpu`) 설계 → `docs/design/diagnosis_v1.md` | Claude | ✅ 10/16 | — | 규칙·입력·평가·테스트 표 |
-| T8b | diagnosis v1 구현: ① `OsSampler.call_core_pct` ② `Diagnoser(device, flow)` ③ T4 tick 연결 ④ `scripts/diag_eval.py` (브랜치 `ml/t8b-diag-v1`, ③은 T4 위) | Codex → luna·medium (기본값) + Claude 리뷰 | 🟡 Codex 진행 중 (10/16 밤 착수). 단계 커밋마다 Claude 리뷰. **①은 W3(10/27) 전 필수** | docs/briefs/T8b.md, docs/design/diagnosis_v1.md | 설계 문서 테스트 표 통과, 기존 diagnosis 테스트 13개 무수정 통과 |
+| T8b | diagnosis v1 구현: ① `OsSampler.call_core_pct` ② `Diagnoser(device, flow)` ③ T4 tick 연결 ④ `scripts/diag_eval.py` (브랜치 `ml/t8b-diag-v1`, ③은 T4 위) | Codex → luna·medium (기본값) + Claude 리뷰 | 🟡 ①② ✅ Claude가 패치 적용·리뷰 PASS·push (`mcqm-wt-T8b`, `f044681`·`1d16ced`, 87 passed+1 skipped). ③ T4 커밋·PASS 대기 | docs/design/t8b_implementation.md | 설계 문서 테스트 표 통과, 기존 diagnosis 테스트 13개 무수정 통과 |
 
 ## 기록 (최신이 위. 항목당 3줄 이내: 한 일 / 다음 담당·모델·effort 추천+이유 / 남은 위험)
+- 2026-10-16 밤 Claude 루프: Codex 패치 T8b_01·02를 새 worktree `mcqm-wt-T8b`(브랜치 `ml/t8b-diag-v1`, T1 `31243bf` 위)에 적용 → pytest 47+1s / 87+1s, 리뷰 PASS(낮음 3건, `codex_notes.md` "Claude 리뷰 T8b"), 커밋·push(PR 없음). T1 worktree는 그대로. 다음: T4 커밋·PASS 뒤 ③ Codex sol·high(실시간 연결). 위험: 실측 affinity·≥85 미확인(W3 S0-4), diag_eval 실 dump 미검증.
+- 2026-10-16 Codex: T4 미커밋·PASS 없음 확인. T8b ①②를 `data/ai_runs/T8b-work`에 구현, 단계 패치 2개가 T1 `31243bf`에 `git apply --check` 통과. 기존 diagnosis 13개 테스트 유지. 다음: 사용자 권한 세션에서 `ml/t8b-diag-v1` 생성·pytest → Claude 리뷰(반대편 AI), ③은 T4 PASS 뒤 Codex sol·high(실시간 연결). 위험: Python 실행·Git 쓰기 차단, 실행 테스트·실측 미확인. 상세 `docs/design/t8b_implementation.md`.
 - 2026-10-16 저녁 Claude: T8 설계(`diagnosis_v1.md`) — P2 원자료 재분석으로 근거 확보(수신 패킷 정상, 코어 고정 시 CPU%가 낮게 보임, v0.1 `loss` 오탐은 relay→P2P 전환+RTP 미해석). T1에 `--enable-heuristic rtp_udp` 커밋·push(`31243bf`, 39 passed+1 skipped). v1.2 제안 Q9·W3 S0-3/S0-4 추가. 다음: T8b → Codex luna·medium(설계가 테스트 표까지 정해져 범위 명확). 위험: RTP 휴리스틱은 실통화 pcap이 없어 미검증(W3 S0-3), T4와 tshark_live.py 충돌 가능, 리뷰 루프는 T4 커밋 뒤 대상 생김.
 - 2026-10-16 Codex: 사용자 요청으로 게시 재개. 공유 .venv에서 T1 39 passed+1 skipped, T3b 104 passed+1 skipped 재확인 후 후속 수정 커밋. 문서 #5·T1 #6·T3b #7 draft PR 게시 완료(중복 ctx 제거). 다음: 문서 PR 병합 후 T1·T3b base main 전환. 이후 T4 Codex sol·high(동시성). 위험: data 없는 테스트 skip, tshark 실측 미확인.
 - 2026-10-16 15:20 Claude 루프: T1·T3b 미커밋 후속 수정 리뷰 PASS (`data/ai_runs/review_T1_2.md` 39 passed+1 skipped, `review_T3b_2.md` 104 passed+1 skipped). 대신 커밋하려 했으나 권한 분류기가 worktree 커밋·이후 git 조회를 막아 push·PR 못 함. 다음: 사용자가 커밋·push·PR(아래 "사용자에게" 1번) → T4 Codex sol·high. 위험: codex_notes에 Codex 답 기록 없음(Codex 실행 여부 미확인).
@@ -42,6 +44,7 @@
 - 2026-10-16 Claude: 프로토콜 도입, T1–T4 시드. 다음: T1 → Codex luna·medium (범위가 명확한 리팩터링). 위험: 실제 tshark 캡처는 사용자 실측 전까지 미검증.
 
 ## 사용자에게 (걸림돌·제안·모호한 점. 답 받으면 지우고 결정은 PROGRESS "결정 사항"으로)
+- T8b: Codex sandbox가 `.git/refs` 쓰기·`.venv` Python 실행을 거부한다(①②는 Claude가 대신 적용해 해결). T4도 같은 이유로 막혔을 수 있다 → Codex 권한 설정 확인 필요. ③은 T4 커밋·PASS 뒤.
 **다음 세션 순서 (10/16 작성. 각 단계 시작 전: 이 HANDOFF "현재 상태" + PROJECT_SPEC 해당 절 확인 → 계획 → 실행)**
 - S1–S3 완료: 문서 draft PR [#5](https://github.com/sungmin-c/cse310_MCQM/pull/5), T1 [#6](https://github.com/sungmin-c/cse310_MCQM/pull/6), T3b [#7](https://github.com/sungmin-c/cse310_MCQM/pull/7). T1·T3b는 중복 ctx 제거 후 docs/agent-protocol 위로 rebase·push했다. #5 먼저 병합 → #6·#7 base를 main으로 전환. 이번 범위는 draft PR까지이며 병합·T4는 미실행.
 - S4 [Codex sol·high] T4. T1·T3b 병합 전이면 둘을 합친 worktree를 직접 만든다 (ai_loop는 main에서 분기하므로):

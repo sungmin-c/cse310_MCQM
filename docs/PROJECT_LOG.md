@@ -59,6 +59,7 @@
 | 27 | 분석 | P2 원자료 재분석 (단계별 OS·패킷·정답 신호 + v0.1 진단 재생) | **Q2:** `device_cpu` 규칙의 입력을 정하려고 | 수신 패킷은 모든 부하 단계에서 정상. **2코어 고정 시 전체 CPU 23%·통화 프로세스 5–10%로 낮게 보임** → affinity 코어 기준 지표 `call_core_pct` 필요. v0.1의 `loss` 오탐(최대 34/60창)은 relay → P2P 경로 전환과 RTP 미해석이 원인으로 보임 |
 | 28 | 수정 | tshark에 `--enable-heuristic rtp_udp` 추가 (`31243bf`, PR #6) | P2P 흐름 포트가 49152를 넘으면 RTP 순번이 사라져 손실 진단이 IP/UDP 규칙으로 떨어짐 | 테스트 39 passed+1 skipped. 실통화 검증은 W3 S0-3 |
 | 29 | 설계 | diagnosis v1 (`device_cpu`, 흐름 전환 시 기준선 재수집) → `docs/design/diagnosis_v1.md` (T8) | **Q2:** 패킷만 vs 패킷+OS 비교 실험 설계 | 구현은 T8b(Codex). 임계값 85%는 [가정], W3 dev로 조정 |
+| 30 | 구현 준비 | T8b ①② 별도 사본·단계 패치: `call_core_pct`, CPU·flow 진단, W3 평가 CLI·테스트 | **Q2:** OS 누락 시 CPU 판정 차단, 재수집 중 창도 평가에 포함 | Claude가 `ml/t8b-diag-v1`에 적용·커밋(`f044681`·`1d16ced`), pytest 87 passed+1 skipped, 리뷰 PASS. 실측 미확인. ③은 T4 커밋·PASS 대기. 상세 `docs/design/t8b_implementation.md` |
 
 ## 지금까지의 결론 3가지
 1. **Q1:** 논문 모델을 그대로 쓰면 실제 Windows 통화에서는 맞지 않는다. 직접 수집한 데이터로 재학습해야 한다.
