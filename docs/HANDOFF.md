@@ -30,7 +30,7 @@
 | T6 | SCHEMA v1.2 제안 → `docs/design/schema_v1.2_proposal.md` | Claude → 팀원(Web) 확인 | ⏳ 팀원 답 대기 (Q1–Q9, Q9 = `call_core_pct` 10/16 추가) | 제안 문서 §4 | 승인 후 §5 반영 PR |
 | T7 | W3 수집 절차 → `docs/design/w3_collection.md` | Claude ✅ → 사용자 실측 | ⬜ S0 사전 점검부터 | 절차 문서 | 30통화 `ok` |
 | T8 | diagnosis v1 (`device_cpu`) 설계 → `docs/design/diagnosis_v1.md` | Claude | ✅ 10/16 | — | 규칙·입력·평가·테스트 표 |
-| T8b | diagnosis v1 구현: ① `OsSampler.call_core_pct` ② `Diagnoser(device, flow)` ③ T4 tick 연결 ④ `scripts/diag_eval.py` (브랜치 `ml/t8b-diag-v1`, ③은 T4 위) | Codex → luna·medium (기본값) | ⬜ 착수 가능. **①은 W3(10/27) 전 필수** | docs/design/diagnosis_v1.md | 설계 문서 테스트 표 통과, 기존 diagnosis 테스트 13개 무수정 통과 |
+| T8b | diagnosis v1 구현: ① `OsSampler.call_core_pct` ② `Diagnoser(device, flow)` ③ T4 tick 연결 ④ `scripts/diag_eval.py` (브랜치 `ml/t8b-diag-v1`, ③은 T4 위) | Codex → luna·medium (기본값) | ⬜ 착수 가능. **①은 W3(10/27) 전 필수** | docs/briefs/T8b.md, docs/design/diagnosis_v1.md | 설계 문서 테스트 표 통과, 기존 diagnosis 테스트 13개 무수정 통과 |
 
 ## 기록 (최신이 위. 항목당 3줄 이내: 한 일 / 다음 담당·모델·effort 추천+이유 / 남은 위험)
 - 2026-10-16 저녁 Claude: T8 설계(`diagnosis_v1.md`) — P2 원자료 재분석으로 근거 확보(수신 패킷 정상, 코어 고정 시 CPU%가 낮게 보임, v0.1 `loss` 오탐은 relay→P2P 전환+RTP 미해석). T1에 `--enable-heuristic rtp_udp` 커밋·push(`31243bf`, 39 passed+1 skipped). v1.2 제안 Q9·W3 S0-3/S0-4 추가. 다음: T8b → Codex luna·medium(설계가 테스트 표까지 정해져 범위 명확). 위험: RTP 휴리스틱은 실통화 pcap이 없어 미검증(W3 S0-3), T4와 tshark_live.py 충돌 가능, 리뷰 루프는 T4 커밋 뒤 대상 생김.
@@ -47,10 +47,9 @@
 - S4 [Codex sol·high] T4. T1·T3b 병합 전이면 둘을 합친 worktree를 직접 만든다 (ai_loop는 main에서 분기하므로):
   `git worktree add ..\mcqm-wt-T4 -b ml/t4-ws ml/t1-tshark-live; git -C ..\mcqm-wt-T4 merge ml/t3b-judge; New-Item -ItemType Directory -Force ..\mcqm-wt-T4\data\models; Copy-Item data\models\* ..\mcqm-wt-T4\data\models\`
   `pwsh scripts/ai_loop.ps1 -Id T4 -Branch ml/t4-ws -Brief docs/briefs/T4.md -ImplEffort high`
-- S5 [Claude] ✅ T8 설계(`docs/design/diagnosis_v1.md`) + T1 RTP 수정(`31243bf`). 리뷰 루프는 T4가 아직 미커밋이라 대상 없음 → **T4 커밋 뒤** `/loop 15m [MCQM 리뷰 루프] …`(대상 `mcqm-wt-T4`, 상태 `data/ai_runs/claude_review_state.txt`). T4 PASS 후 T4 push만 (PR 없음, 통합 브랜치)
-- S5b [Codex luna·medium] T8b ① `call_core_pct`부터 (W3 S0-4 전제). 권장: ①만 `ml/t1-tshark-live` 위에서 먼저, ②–④는 T4 뒤
+- S5 [Claude] ✅ T8 설계 + T1 RTP 수정(`31243bf`). **결정(10/16): 리뷰 루프는 T4 커밋 확인 후 새 Claude 세션에서** `/loop 15m [MCQM 리뷰 루프] …`(대상 `mcqm-wt-T4`, 상태 `data/ai_runs/claude_review_state.txt`). T4 PASS 후 T4 push만 (PR 없음, 통합 브랜치)
+- S5b [Codex luna·medium] T8b — 브리프 `docs/briefs/T8b.md`. 1단계(`call_core_pct`, `ml/t1-tshark-live`에서 분기)부터. 2단계(Diagnoser·diag_eval)는 T4와 무관해 이어서, 3단계만 T4 뒤
 - S6 [사용자] 팀원에게 v1.2 질문 Q1–Q9 전달 / W3 전 사전 점검 S0 (`w3_collection.md` §0, 특히 S0-1)
 - judge 임계값 근거: 표준(G.1070) vs 수집 데이터 분위수 (docs/design/judge.md 하단, 권장: [가정]값 시작 → W3 후 보정)
 - AGENTS.md·.claude/CLAUDE.md 외부 수정(규칙 통합, Codex 기본값 luna·Fast)과 `docs/design/agent_permissions.md`를 10/16 저녁 문서 PR #5에 반영(공동 승인 필요). `.codex/`는 개인 설정이라 .gitignore에 추가
-- Meet 경로 표기: PROGRESS W1 "P2P 직접 연결"은 P2-1 원자료와 다름(relay `142.250.82.215:3478`로 시작 → 통화 중 P2P 전환). PROGRESS는 공동 승인 파일이라 다음 PROGRESS PR에서 고치길 권장
 - PR 본문 편집(`gh pr edit`)·댓글이 권한에서 거부됨. 사람이 PR #5 본문 끝 "공동 승인 필요"에 `.gitignore`(`.codex/` 추가, `37cd545`)를 덧붙이고, PR #6에 `31243bf`(RTP 휴리스틱) 리뷰를 Codex에 요청
