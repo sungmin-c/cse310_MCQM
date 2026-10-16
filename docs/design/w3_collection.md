@@ -9,7 +9,8 @@
 |---|---|---|---|---|
 | S0-1 | **Clumsy가 버린 수신 패킷이 tshark에 보이는가** | 시험 통화 중 Clumsy `udp and inbound` Drop 10%를 60초. 그동안 캡처 + webrtc dump. `compare` 후 tshark 패킷 수 감소와 dump `packetsLost` 증가를 비교 | tshark 패킷 수가 dump 수신 패킷 수와 같이 줄어든다 | **[추정] Npcap은 WinDivert보다 아래(NDIS)에서 잡으므로 버리기 전 패킷이 보일 수 있다.** 그러면 캡처에는 손실 흔적이 없다 → loss·bandwidth 조건 수집 중단, HANDOFF "사용자에게"에 기록 후 대안 결정 (CPU·none 조건은 계속 가능) |
 | S0-2 | clumsy2 대역폭 제한 동작 | clumsy2 설치(Q16 승인됨, 되돌리기 아래) → 1000 kbps inbound에서 speedtest 다운로드 | ≤ 1100 kbps | 대역폭 조건 8통화를 표 아래 "대체 배정"으로 |
-| S0-3 | 리허설 1통화 | 아래 1–6절을 그대로 한 번 | `compare`의 `n_seconds` ≥ 300, lag scan 최소가 0초 | 원인 기록 후 재시도 |
+| S0-3 | 리허설 1통화 | 아래 1–6절을 그대로 한 번 | `compare`의 `n_seconds` ≥ 300, lag scan 최소가 0초, **수신 영상 패킷의 `rtp.seq` 비율 ≥ 0.99**(P2P 전환 후 구간 포함) | 원인 기록 후 재시도. RTP 비율이 낮으면 `31243bf`(`--enable-heuristic rtp_udp`)가 안 듣는 것 → HANDOFF |
+| S0-4 | `os.csv`에 `call_core_pct` 열 | T8b 1번 구현 후 S0-3 결과 확인 | 열이 있고 C2 조건에서 ≥ 85 근처 | C 조건 수집 보류(진단 평가 불가), N0·L·B만 |
 
 clumsy2 되돌리기: 프로그램 종료 → 남으면 관리자 PowerShell `sc stop WinDivert` → 설치 폴더 삭제. 설치 경로·버전은 `docs/SETUP.local.md`에 기록.
 
@@ -112,7 +113,7 @@ $id = "01"; $cond = "N0"     # 세션 배정표에서
 | F5 | Clumsy 시작 실패·관리자 권한 없음 | 관리자 실행 후 다시 | `redo` |
 | F6 | cpu_load 후 Chrome 선호도가 2코어로 남음 | Chrome 완전 재시작 | 그 통화는 `ok`, `note=affinity_restore_manual` |
 | F7 | `compare` lag scan 최소가 0이 아님 | 시계 어긋남 의심. 그대로 기록 | `ok` + `note=lag<값>` |
-| F8 | Meet 경로가 P2P가 아님(서버 경유 의심: dst 포트 3478/19305 등 [미확인]) | 기록만 | `ok` + `note=relay?` |
+| F8 | Meet 경로가 P2P가 아님(서버 경유 의심: dst 포트 3478/19305 등). P2-1 원자료는 Google relay(`142.250.82.215:3478`)로 시작해 통화 중 P2P(같은 LAN)로 바뀌었다 | 기록만. 전환 시각이 210초 뒤면 `note=path_switch_late` | `ok` + `note=relay?` |
 - `redo`·`drop`은 같은 조건으로 추가 통화. 조건별 `ok` 수가 표의 수에 도달할 때까지.
 - 세션이 끝나면 `log.csv` 요약(조건별 ok 수, 실패 종류)을 HANDOFF 기록에 한 줄로.
 

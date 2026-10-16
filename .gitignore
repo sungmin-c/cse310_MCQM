@@ -6,6 +6,7 @@ data/
 # 개인 설정
 CLAUDE.local.md
 .claude/settings.local.json
+.codex/
 .claude/.headroom_*
 .serena/
 
