@@ -102,7 +102,7 @@ uv run python -m server.app --replay data/pilot/<name>_pkts.csv [--truth <webrtc
 | 필드 (v1.2 제안) | 출처 | 규칙 |
 |---|---|---|
 | `judgement.<지표>`·`overall` | `judge()` 반환값에서 `validated`만 뺀 것 | 값 `good\|fair\|poor\|unknown`. 키 이름은 judge.py 그대로(vcaml 이름) |
-| `device` | Live: T1 `OsSampler`와 같은 psutil 계산 / Replay: `--os` CSV, 없으면 `null` | `cpu_pct`=전체 CPU, `proc_cpu_pct`=통화 프로세스(chrome.exe·zoom.exe 합, 전체 코어 대비), `mem_pct`. **tick.ts 이하 중 가장 최근 샘플**, 2초보다 오래됐으면 `null` |
+| `device` | Live: T1 `OsSampler`와 같은 psutil 계산 / Replay: `--os` CSV, 없으면 `null` | `cpu_pct`=전체 CPU, `proc_cpu_pct`=통화 프로세스(chrome.exe·zoom.exe 합, 전체 코어 대비), `mem_pct`. **tick.ts 이하 중 가장 최근 샘플**, 2초보다 오래됐으면 `null`. (T8b 이후) `call_core_pct` 열이 없는 옛 os.csv(P2 등)를 Replay하면 `device` 전체가 `null`이라 CPU도 안 보인다. 의도된 동작(10/16 리뷰 낮음, 미수정) |
 | `diagnosis` | `Diagnoser.update(w, rssi_dbm=None, seq_loss=…)` | v1.1 초안 구조. `cause`에 `device_cpu` 추가 제안(diagnosis v1, W4). 데스크톱에는 RSSI 입력이 없어 `weak_wifi`는 나오지 않음. `evidence`(6키 고정, `last_signals` 이름 변환)는 제안 문서 §2 — T4는 넣어도 되고 생략해도 됨 [가정] |
 | `seq_loss` 입력 | T1 `process_lines`는 rtp 필드를 파싱하지 않음 | T4 v0은 `seq_loss=None`(IP/UDP 규칙). RTP 순번 결합(`server.features.RtpSeqLoss`)은 후속 |
 - v1.1 초안의 `action`은 v6에서 Android 패널 동작이 없어졌으므로 넣지 않는다(제안 문서에서 폐기 제안).

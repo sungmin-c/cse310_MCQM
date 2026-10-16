@@ -13,10 +13,10 @@
 ```json
 {"...v1 필드...": "...",
  "judgement": {"fps": "good", "bitrate": "fair", "frameHeight": "unknown", "frame_jitter": "good", "overall": "fair"},
- "device": {"cpu_pct": 23.7, "proc_cpu_pct": 8.9, "mem_pct": 71.0},
+ "device": {"cpu_pct": 23.7, "proc_cpu_pct": 8.9, "call_core_pct": 24.1, "mem_pct": 71.0},
  "diagnosis": {"cause": "none", "confidence": 0.67,
                "evidence": {"bytes_ratio": 0.98, "pkts_ratio": 1.01, "iat_q1_delta_ms": 0.4,
-                            "iat_std_ratio": 1.05, "seq_loss": null, "proc_cpu_pct": 8.9}}}
+                            "iat_std_ratio": 1.05, "seq_loss": null, "call_core_pct": 24.1}}}
 ```
 
 ### judgement (신규)
@@ -37,6 +37,7 @@
 | `device` | object \| null | | 노트북 OS 지표. Replay에 OS 기록이 없거나 샘플이 2초보다 오래되면 null |
 | `device.cpu_pct` | number | % (0–100) | 전체 CPU (psutil `cpu_percent`) |
 | `device.proc_cpu_pct` | number | % (0–100, **전체 코어 대비**) | 통화 프로세스 합(chrome.exe·zoom.exe). 작업 관리자의 "프로세스 %"와 같은 기준 |
+| `device.call_core_pct` | number | % (0–100) | **통화 프로세스가 쓸 수 있는 코어(affinity)의 사용률 평균**. `device_cpu` 판정 입력 (`docs/design/diagnosis_v1.md`). P2에서 코어 고정 시 `proc_cpu_pct`는 5–10%로 낮게 보였다 |
 | `device.mem_pct` | number | % | 메모리 사용률 |
 - 모니터 자신의 CPU(`monitor_cpu_pct`)는 T1 CSV에는 있지만 tick에는 넣지 않는다(H1 평가용, 화면 불필요). 필요하면 optional 추가.
 
@@ -55,7 +56,7 @@
 | `iat_q1_delta_ms` | `d_q1` | 패킷 간격 하위 25% 값의 증가량 (대역폭 병목 신호) |
 | `iat_std_ratio` | `r_std` | 패킷 간격 표준편차 / 기준선 (지터 신호) |
 | `seq_loss` | `seq_loss` | RTP 순번 기반 손실률. RTP가 안 보이면 null |
-| `proc_cpu_pct` | `device.proc_cpu_pct` | `device_cpu` 근거 (device가 null이면 null) |
+| `call_core_pct` | `device.call_core_pct` | `device_cpu` 근거 (device가 null이면 null). 10/16 `proc_cpu_pct`에서 변경 — Q9 |
 
 `device_cpu` 의미 (판정 규칙은 diagnosis v1, W4에서 확정): **패킷 신호는 정상인데 노트북 CPU가 높은** 상태. W1 P2에서 CPU 89%에서도 수신 fps는 유지되고 디코드 시간만 8배 늘었고, 코어 제한 시 송신 fps가 3.5까지 떨어졌다 → 패킷만으로는 안 보이므로 `device`를 결합한다. 정답 라벨은 주입한 부하 조건(SPEC 절대 규칙 6).
 
@@ -80,6 +81,7 @@
 | Q5 | `evidence` 6키 고정 + null 허용 형식이 TS 타입으로 쓰기 편한가? (가변 키 dict는 계약 테스트·타입 모두 불편해서 고정함) | 이대로 |
 | Q6 | v1.1의 `action`, client `device` 메시지 폐기에 동의하나? | 동의 |
 | Q7 | tick이 3초 이상 안 오면 "수신 끊김" 표시는 대시보드가 맡나? (서버는 패킷 없는 초에 tick을 보내지 않음) | 대시보드가 맡음 |
+| Q9 | `device.call_core_pct` 추가, `evidence.proc_cpu_pct` → `call_core_pct` (코어 고정 시 전체 코어 대비 %는 포화를 못 보여 줌, diagnosis_v1 근거 2). CPU 카드 게이지는 어느 값? | 게이지 = `call_core_pct`, 보조 숫자 = `cpu_pct` |
 | Q8 | 서버→클라이언트 메시지는 tick 한 종류뿐이라 `type` 필드가 없다. 앞으로 다른 종류가 생기면 그때 `type`을 추가해도 되나? | 그때 추가 (지금은 YAGNI) |
 
 ## 5. 반영 절차 (승인 후, 한 PR)

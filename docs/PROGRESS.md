@@ -25,6 +25,7 @@
 | Q17 | 브랜치 정리 | `ml/m2-core`(PR #1) merge, `ml/overlay-spike`는 브랜치만 보존(PR 없음). 실행 직전 PR 상태 확인 | ⏳ 실행 대기 |
 | Q19 | WS 서버 계약 (10/16, Claude 설계 `docs/design/ws_protocol.md`) | server→client는 tick 한 종류, 서버 1개 = 입력 1개(Live 또는 Replay), 오류·종료는 close code. 기본 출력은 v1 그대로, v1.2 제안 필드는 `--schema v1.2`일 때만. `qoe`는 judge 등급에서 파생한 호환값 [가정]. tick `validated`는 SCHEMA대로 truth 유무 (judge.py의 `validated`는 쓰지 않음). 이유: 계약 테스트가 키를 정확히 비교해 새 메시지·필드가 v1 소비자를 깰 수 있음 | ✅(팀원 확인은 v1.2와 함께) |
 | Q20 | W3 수집 사전 점검 (10/16) | 본 수집 전 S0-1: Clumsy가 버린 수신 패킷이 tshark에 보이는지 확인. [추정] Npcap이 WinDivert보다 아래에서 잡아 손실이 캡처에 안 보일 수 있음 → 실패 시 loss·bandwidth 조건 보류 (`docs/design/w3_collection.md`) | ⏳ 실측 대기 |
+| Q21 | diagnosis v1 `device_cpu` (10/16, Claude 설계 `docs/design/diagnosis_v1.md`) | 입력은 affinity 코어 사용률 `call_core_pct`(코어 고정 시 전체 CPU%는 23%로 포화를 못 보임, P2-2), 임계값 85% [가정] → W3 dev 조정. 직접 관측 패킷 신호(bandwidth·RTP loss·jitter) 다음, IP/UDP 손실 규칙 앞. 흐름 전환 시 기준선 재수집. 구현 순서: `call_core_pct` 수집을 W3 전에 먼저(T8b 1단계). tshark RTP 휴리스틱 추가(`31243bf`)는 W3 S0-3에서 검증 | ✅(실측 대기) |
 | Q18 | H4 / 팀원 범위 / 웹 중심 | H4 = 노트북 상주 서비스 + 입력 모듈로 확정. 대시보드 필수 = 원인·근거·CPU 카드(What-if 슬라이더는 선택), 팀원 동의함. **최종 화면은 웹 대시보드, 네이티브 앱 없음** | ✅ |
 
 ## 방향 재설정 v6 (10/14)
@@ -50,7 +51,7 @@
 v5 모바일 일정(E1 충실도, E2 정확도, E3 진단, Flutter 오버레이 마일스톤)은 git 이력(커밋 4bfda7b)에 있다.
 
 ## W1 파일럿 결과 (10/15) — P1–P4 완료
-도구: `scripts/pilot_live.py`(tshark 실시간 → 모델 → CSV, psutil 1 Hz, 정답 비교), `scripts/cpu_load.py`(busy loop + `--pin N` Chrome 코어 제한). 데이터는 `data/pilot/`(git 제외). 환경: Windows 노트북 Wi-Fi 수신, 상대 S20 Meet 앱(P2P 직접 연결), 노트북 Chrome.
+도구: `scripts/pilot_live.py`(tshark 실시간 → 모델 → CSV, psutil 1 Hz, 정답 비교), `scripts/cpu_load.py`(busy loop + `--pin N` Chrome 코어 제한). 데이터는 `data/pilot/`(git 제외). 환경: Windows 노트북 Wi-Fi 수신, 상대 S20 Meet 앱, 노트북 Chrome. 경로: P2-1 원자료는 Google relay(`142.250.82.215:3478`)로 시작해 통화 중 같은 LAN P2P로 전환됐다(10/16 재분석, `docs/design/diagnosis_v1.md`). 다른 통화의 경로는 미확인.
 
 **P1 — Meet 실시간 추정 vs webrtc-internals 정답 (196초)**
 | 지표 | 정답 | 추정 | 오차 |
@@ -84,7 +85,7 @@ v5 모바일 일정(E1 충실도, E2 정확도, E3 진단, Flutter 오버레이 
 - 한계: 통화 1건, 각 3회, 배터리 상태. W5에서 반복해 발표용 표로 만든다.
 
 **P4 — Zoom 정답 가능성 (Zoom 데스크톱 7.2.1, 노트북 수신, 상대 S20 Zoom 앱, 1통화)**
-- 패킷: tshark로 잡힌다. **Zoom은 서버 경유**(`170.114.190.137:8801`, UDP), 수신 약 1.9 Mbps, 초당 약 200패킷. Meet(P2P)와 경로가 다르다.
+- 패킷: tshark로 잡힌다. **Zoom은 서버 경유**(`170.114.190.137:8801`, UDP), 수신 약 1.9 Mbps, 초당 약 200패킷. Meet(relay로 시작해 P2P로 전환될 수 있음)와 경로가 다르다.
 - 통계 창(설정 → 통계 → 비디오): 지연·지터·패킷 손실·해상도·fps가 송신/수신 따로 나온다(수신 24→23 fps, 480×640, 지연 46–51 ms, 지터 1 ms, 손실 0%). **파일 내보내기 없음**, fps는 정수, 갱신 주기 [미확인]. 통화 밖에서는 CPU·메모리만 표시. 자동 수집하려면 주기 캡처 + OCR 필요(Windows 기본 OCR 사용 가능 여부 [미확인]).
 - 화면 녹화(Game Bar 30 fps, 20초): 수신 영상 타일만 잘라 프레임 간 차이로 센 fps가 임계값에 크게 의존(0.05→24.7, 0.1→19.4, 0.3→17.2; 통계 창 23–24). 낮은 임계값에서만 일치. 개선안: S20 화면에 스톱워치처럼 매 프레임이 바뀌는 것을 비추고 60 fps로 녹화.
 - 도구: opencv-python을 `uv run --with`로 임시 사용(프로젝트 의존성 변경 없음, 승인 10/15). 되돌리기 `uv cache clean opencv-python`.
