@@ -56,6 +56,19 @@ def test_worsening_sweep_never_improves(metric):
         previous = severity
 
 
+@pytest.mark.parametrize("metric", METRICS)
+def test_raw_worsening_sweep_never_improves(metric):
+    values = range(1201) if metric == "frame_jitter" else range(1000, -1, -1)
+    previous = -1
+    for value in values:
+        value = value / 10 if metric in ("fps", "frame_jitter") else value
+        state = JudgeState(baseline={"bitrate": 1000.0, "frameHeight": 1000.0})
+        result = judge({metric: value}, "meet", state)
+        severity = SEVERITY[result[metric]]
+        assert severity >= previous, (metric, value, result)
+        previous = severity
+
+
 @pytest.mark.parametrize("metric, poor_value", [
     ("fps", 10), ("bitrate", 100), ("frameHeight", 180), ("frame_jitter", 80),
 ])
