@@ -23,6 +23,8 @@
 | Q15 | Zoom 정답 | 학생 계정(요금제 미확인, QoS API는 Business 이상 필요). **화면 기반 fps**로 간다. 파일럿 P4에서 가능 여부 확인 | ✅(검증 대기) |
 | Q16 | 대역폭 제한 도구 | **clumsy2 설치 승인**. 설치는 W3 직전, 되돌리는 방법 함께 기록. 동작 미확인 | ✅(설치 대기) |
 | Q17 | 브랜치 정리 | `ml/m2-core`(PR #1) merge, `ml/overlay-spike`는 브랜치만 보존(PR 없음). 실행 직전 PR 상태 확인 | ⏳ 실행 대기 |
+| Q19 | WS 서버 계약 (10/16, Claude 설계 `docs/design/ws_protocol.md`) | server→client는 tick 한 종류, 서버 1개 = 입력 1개(Live 또는 Replay), 오류·종료는 close code. 기본 출력은 v1 그대로, v1.2 제안 필드는 `--schema v1.2`일 때만. `qoe`는 judge 등급에서 파생한 호환값 [가정]. tick `validated`는 SCHEMA대로 truth 유무 (judge.py의 `validated`는 쓰지 않음). 이유: 계약 테스트가 키를 정확히 비교해 새 메시지·필드가 v1 소비자를 깰 수 있음 | ✅(팀원 확인은 v1.2와 함께) |
+| Q20 | W3 수집 사전 점검 (10/16) | 본 수집 전 S0-1: Clumsy가 버린 수신 패킷이 tshark에 보이는지 확인. [추정] Npcap이 WinDivert보다 아래에서 잡아 손실이 캡처에 안 보일 수 있음 → 실패 시 loss·bandwidth 조건 보류 (`docs/design/w3_collection.md`) | ⏳ 실측 대기 |
 | Q18 | H4 / 팀원 범위 / 웹 중심 | H4 = 노트북 상주 서비스 + 입력 모듈로 확정. 대시보드 필수 = 원인·근거·CPU 카드(What-if 슬라이더는 선택), 팀원 동의함. **최종 화면은 웹 대시보드, 네이티브 앱 없음** | ✅ |
 
 ## 방향 재설정 v6 (10/14)
