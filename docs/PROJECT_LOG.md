@@ -61,6 +61,7 @@
 | 29 | 설계 | diagnosis v1 (`device_cpu`, 흐름 전환 시 기준선 재수집) → `docs/design/diagnosis_v1.md` (T8) | **Q2:** 패킷만 vs 패킷+OS 비교 실험 설계 | 구현은 T8b(Codex). 임계값 85%는 [가정], W3 dev로 조정 |
 | 30 | 구현 준비 | T8b ①② 별도 사본·단계 패치: `call_core_pct`, CPU·flow 진단, W3 평가 CLI·테스트 | **Q2:** OS 누락 시 CPU 판정 차단, 재수집 중 창도 평가에 포함 | Claude가 `ml/t8b-diag-v1`에 적용·커밋(`f044681`·`1d16ced`), pytest 87 passed+1 skipped, 리뷰 PASS. 실측 미확인. ③은 T4 커밋·PASS 대기. 상세 `docs/design/t8b_implementation.md` |
 | 31 | 구현 | T4 WS 서버(`431faef`) + T8b ③ tick 연결(`6cfaf2c`): device·flow가 Diagnoser로 | **Q2:** 패킷만 vs 패킷+OS를 `--schema v1.2`·`--os` 유무로 재생 비교 가능 | Claude 리뷰로 T4 결함 2건 수정(종료 시 예외 미처리, Live tshark `rtp_udp` 누락). 176 passed+1 skipped. Live·실통화 미확인 |
+| 32 | 병합 | PR #9 merge commit(`9655017`)로 T1·T3b·T4·T8b를 main에 병합, #6~#8 close | 다음 단계(W3 S0)를 main에서 시작 | main pytest 197 passed. WinError 10014는 `3730af1` 재시도 후에도 test_ws 반복 중 가끔 실패(환경 문제, 원인 미확인) |
 
 ## 지금까지의 결론 3가지
 1. **Q1:** 논문 모델을 그대로 쓰면 실제 Windows 통화에서는 맞지 않는다. 직접 수집한 데이터로 재학습해야 한다.
@@ -75,3 +76,4 @@
 - **W3–W4:** Meet 약 30통화와 Zoom 약 15통화 수집, 재학습, clumsy2 설치
 - **W5:** 평가
 - **W6:** Android 설계 문서와 정리
+
