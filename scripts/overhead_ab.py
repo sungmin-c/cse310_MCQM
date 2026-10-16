@@ -16,8 +16,8 @@ import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from pilot_live import OUT, OsSampler  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from capture.tshark_live import OUT, OsSampler  # noqa: E402
 
 
 def main():
