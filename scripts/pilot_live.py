@@ -25,28 +25,36 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from capture.tshark_live import METRICS, OUT, capture, tshark_path  # noqa: E402
 
 
-def compare(a):
-    import numpy as np
+def select_truth(dump, epochs):
+    """캡처 구간에서 fps>0인 초가 가장 많은 PC의 정답을 고른다 (lag 보정 없음)."""
     import pandas as pd
     from vcaml.io.webrtc_reader import WebRTCReader
 
-    est = pd.read_csv(OUT / f"{a.name}_est.csv")
     # Meet는 통화 중 PeerConnection을 갈아탄다(P2P↔서버 [추정]). WebRTCReader는 첫 PC만 읽으므로
     # PC마다 따로 읽어 캡처 구간에서 fps > 0인 초가 가장 많은 PC를 고른다
-    raw = json.load(open(a.dump, encoding="utf-8"))
+    with open(dump, encoding="utf-8") as f:
+        raw = json.load(f)
     best, best_n = pd.DataFrame(), -1
     with tempfile.TemporaryDirectory() as td:
-        for pc, conn in raw["PeerConnections"].items():
-            p = Path(td) / f"{pc}.json"
+        for i, (pc, conn) in enumerate(raw["PeerConnections"].items()):
+            p = Path(td) / f"pc_{i}.json"
             p.write_text(json.dumps({"PeerConnections": {pc: conn}}), encoding="utf-8")
             t = WebRTCReader(str(p), "in_lab_data").get_webrtc()
             if t.empty:
                 continue
-            n = int(((t["framesReceivedPerSecond"] > 0) & t["ts"].isin(est["et"])).sum())
+            n = int(t.loc[(t["framesReceivedPerSecond"] > 0) & t["ts"].isin(epochs), "ts"].nunique())
             print(f"PC {pc}: 캡처 구간 fps>0 {n}초")
             if n > best_n:
                 best, best_n = t, n
-    truth = best
+    return best
+
+
+def compare(a):
+    import numpy as np
+    import pandas as pd
+
+    est = pd.read_csv(OUT / f"{a.name}_est.csv")
+    truth = select_truth(a.dump, est["et"])
     if truth.empty:
         sys.exit("정답 파싱 실패: dump에 IT01V(inbound video) 통계가 없다 — Chrome 통계 ID 형식 확인 필요")
     truth = truth[["ts", *METRICS.values()]]

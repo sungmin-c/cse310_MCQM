@@ -105,6 +105,17 @@ def test_process_lines_empty_stream_flushes_once_without_predictions():
     assert all(model.calls == [] for model, _ in models.values())
 
 
+def test_feature_callback_and_idle_flush_preserve_original_rows():
+    emitted, features = [], []
+    process_lines([line(0.5), None, None, line(3.5)], fake_models(["l_num_pkts"]),
+                  emitted.append, dst_ip="A",
+                  feature_emit=lambda row, w: features.append((row, w)))
+
+    assert [row["et"] for row in emitted] == [1000, 1003]
+    assert [row for row, _ in features] == emitted
+    assert [int(w["l_num_pkts"].iloc[0]) for _, w in features] == [1, 1]
+
+
 def test_process_lines_keyboard_interrupt_flushes_once_with_ordered_features():
     # 모델 학습 때의 열 순서는 feature 표의 저장 순서와 다를 수 있다.
     final = pd.DataFrame([{"first": 1.0, "et": 1000.9, "l_num_pkts": 1, "second": 2.0}])
