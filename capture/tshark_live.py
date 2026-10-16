@@ -130,8 +130,9 @@ def capture(a):
     OUT.mkdir(parents=True, exist_ok=True)
     models = load_models()
     wf = WindowFeatures(vca="meet", dst_ip=a.dst)
+    # 1024-49152 밖 포트(P2P 흐름은 양쪽 모두 49152 초과일 수 있음, P2-1)는 휴리스틱으로 RTP를 해석한다
     cmd = [tshark_path(), "-i", a.iface, "-p", "-f", "udp", "-l", "-n",
-           "-d", "udp.port==1024-49152,rtp", "-T", "fields", "-E", "separator=/t"]
+           "-d", "udp.port==1024-49152,rtp", "--enable-heuristic", "rtp_udp", "-T", "fields", "-E", "separator=/t"]
     for fld in FIELDS:
         cmd += ["-e", fld]
     if a.duration:

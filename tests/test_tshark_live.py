@@ -179,7 +179,8 @@ def test_capture_preserves_csv_format_and_tshark_arguments(tmp_path, monkeypatch
             ["1001", "1", "0.12", "1.12", "2.12", "3.12", "2.3"],
         ]
     expected_argv = ["fake-tshark", "-i", "test-iface", "-p", "-f", "udp", "-l", "-n",
-                     "-d", "udp.port==1024-49152,rtp", "-T", "fields", "-E", "separator=/t"]
+                     "-d", "udp.port==1024-49152,rtp", "--enable-heuristic", "rtp_udp",
+                     "-T", "fields", "-E", "separator=/t"]
     for field in header:
         expected_argv += ["-e", field]
     expected_argv += ["-a", "duration:2"]
