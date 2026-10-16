@@ -6,7 +6,7 @@
 ## 현재 상태 (갱신: 2026-10-16 밤, Claude)
 - 주차: W2 (10/20–10/26, Midterm 1 10/21). draft PR #5(문서)·#6(T1)·#7(T3b) 병합 대기. **T4 ✅ 리뷰 PASS·push (`ml/t4-ws` `431faef`, T1 `31243bf` 포함)**. **T8b ✅ ①②③ 리뷰 PASS·push (`ml/t8b-diag-v1` `6cfaf2c`, = T8b + T4, 176 passed+1 skipped)** → W3 전 코드 준비 끝, 다음은 사용자 W3 S0 사전 점검
 - **Codex 샌드박스는 git 쓰기·Python 실행이 막혀 있다** → Codex는 worktree 파일 수정 + `codex_notes.md` 기록까지만, pytest·커밋·push는 Claude 리뷰 루프가 한다
-- 테스트 환경: 이벤트 루프 생성 시 `socket.socketpair()`가 WinError 10014로 가끔 실패(앱 없이 `asyncio.run`만 돌려도 300회 중 27회). test_ws 실패가 이 오류뿐이면 환경 문제로 본다
+- 테스트 환경: 이벤트 루프 생성 시 `socket.socketpair()`가 WinError 10014로 가끔 실패(앱 없이 `asyncio.run`만 돌려도 300회 중 27회). test_ws 실패가 이 오류뿐이면 환경 문제로 본다. 10/16 재현(T8b worktree, test_ws 9개): 원인 확인한 3회 = 실패 1·4·0개(모두 10014). 같은 날 추가 6회 포함 9회 중 5회 실패, 81건 중 18건. 전체 pytest 1회 = 1 failed(10014)/175 passed. 미수정
 - 이번 세션 발견: P2P 흐름 포트가 49152를 넘으면 tshark가 RTP를 해석 못 함 → T1에 수정 커밋 `31243bf`(PR #6). 코어 고정 시 CPU%가 낮게 보임 → `call_core_pct` 설계
 - 마지막 작업자: Claude (T4 리뷰·수정 2건·push, T8b ③ 리뷰·커밋·push)
 
@@ -35,6 +35,7 @@
 | T8b | diagnosis v1 구현: ① `OsSampler.call_core_pct` ② `Diagnoser(device, flow)` ③ T4 tick 연결 ④ `scripts/diag_eval.py` (브랜치 `ml/t8b-diag-v1`, ③은 T4 위) | Codex → luna·medium (기본값) + Claude 리뷰 | 🟡 ①② ✅ Claude 리뷰 PASS·push (`f044681`·`1d16ced`, 87 passed+1 skipped). ✅ ③ Codex 패치 → Claude 리뷰 PASS·커밋 `6cfaf2c`·push (낮음 2건, `codex_notes.md` "Claude 리뷰 T8b ③"). 실측 미확인(W3 S0-3·S0-4) | docs/briefs/T8b.md 3단계, docs/design/t8b_implementation.md "3단계 후속 지점" | ③ 테스트 통과 및 Claude 리뷰 |
 
 ## 기록 (최신이 위. 항목당 3줄 이내: 한 일 / 다음 담당·모델·effort 추천+이유 / 남은 위험)
+- 2026-10-16 밤 Claude: 병합 사전 점검(`git merge-tree`, main에서 #5→#6→#7→t4→t8b 연쇄) → **merge commit 방식이면 충돌 0**, 최종 코드 = t8b(+`.gitignore` 1줄). **squash·rebase는 #6부터 연쇄 충돌**(문서 6개, t4부터 코드 포함) → 사용 금지. #6·#7 base가 `docs/agent-protocol`이라 #5 먼저 병합하면 retarget 필요. T8b 낮음 `_dst_bytes` 직접 참조 → `WindowFeatures.receiver` 속성으로 교체(T8b worktree, 미커밋). 다음: 사용자 병합 승인. 위험: 10014 지속.
 - 2026-10-16 밤 Claude 루프: Codex T8b ③ 패치(창별 주 흐름 집계 + device·flow를 Diagnoser로) 적용 → 176 passed+1 skipped, 리뷰 PASS(낮음 2), 커밋·push `6cfaf2c`, 루프 종료. 다음: 사용자 W3 S0(특히 S0-3 RTP 비율, S0-4 `call_core_pct` 2코어 고정 ≥85) → 이후 diag_eval은 Codex luna·medium. 위험: WinError 10014 환경 문제 지속, 브랜치 PR·병합 순서(#5→#6·#7→t4→t8b) 사람 결정.
 - 2026-10-16 밤 Claude: T4 미커밋 변경 리뷰 → 높음(종료 시 `WebSocketDisconnected` 미처리, 결정적 테스트 실패)·중간(Live tshark `rtp_udp` 누락) 직접 수정, 커밋·T1 merge·push(`431faef`). T8b에 T4 merge·push(`2dd55ea`, 172 passed+1 skipped, 환경 오류 1). 다음: T8b ③ Codex sol·high(실시간 연결, 표의 "동시성" 행). 위험: WinError 10014 환경 문제 원인 미확인(보안 프로그램 `KOSinj` 등 Winsock 후킹 의심), tshark 인자 두 곳 중복(낮음).
 - 2026-10-16 밤 Claude 루프: Codex 패치 T8b_01·02를 새 worktree `mcqm-wt-T8b`(브랜치 `ml/t8b-diag-v1`, T1 `31243bf` 위)에 적용 → pytest 47+1s / 87+1s, 리뷰 PASS(낮음 3건, `codex_notes.md` "Claude 리뷰 T8b"), 커밋·push(PR 없음). T1 worktree는 그대로. 다음: T4 커밋·PASS 뒤 ③ Codex sol·high(실시간 연결). 위험: 실측 affinity·≥85 미확인(W3 S0-4), diag_eval 실 dump 미검증.
