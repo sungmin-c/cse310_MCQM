@@ -13,6 +13,9 @@
 - `scripts/diag_eval.py`: 설계 문서 "평가" 절. W3 자료가 없으니 합성 CSV로 실행만 확인하는 테스트 1개.
 
 ## 3단계 — T4 tick 연결 (T4 커밋·PASS 뒤, `ml/t4-ws` 위)
+- **작업 위치 (10/16 밤 준비 완료)**: `..\mcqm-wt-T8b`, 브랜치 `ml/t8b-diag-v1` HEAD `2dd55ea` = ①② + T4(`431faef`). 새 브랜치 만들지 않는다.
+- Codex 샌드박스는 git 쓰기·Python 실행이 막혀 있다 → **파일 수정만** 하고 `data/ai_runs/codex_notes.md`에 `[T8b] ③ 완료: <바꾼 파일>` 한 줄. pytest·커밋·push는 Claude 리뷰 루프가 한다.
+- 대상: `server/app.py`의 `build_tick`(현재 `diagnoser.update(w, seq_loss=None)`), Replay `--os` 파싱, Live `sample_os`. 흐름 키는 `process_lines`가 원본 필드를 넘기지 않으니 창별 `(ip.src, udp.srcport)` 바이트 집계를 추가해야 한다(`scripts/diag_eval.py:run_call`의 방식과 같게, 경계 패킷은 다음 창).
 - 창마다 수신 영상 패킷의 `(ip.src, udp.srcport)` 바이트 합 최대를 `flow`로, 2초 이내 최근 OS 샘플을 `device`로 `Diagnoser.update`에 넘긴다. Replay는 `--os` CSV(열이 없으면 `device=None`).
 - Live는 T4 `server/app.py`가 psutil을 따로 계산한다(10/16 미커밋 기준 `:237` 근처) → 거기서도 1단계 `core_util`을 재사용해 `device.call_core_pct`를 채운다. 계산을 새로 짜지 않는다.
 - (1단계 확인 결과, Claude 10/16) os.csv를 위치로 읽는 코드는 없다. T4 Replay도 `csv.DictReader`라 마지막 열 추가는 안전.
