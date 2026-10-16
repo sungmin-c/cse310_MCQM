@@ -150,7 +150,8 @@ def test_capture_preserves_csv_format_and_tshark_arguments(tmp_path, monkeypatch
     monkeypatch.setattr(tshark_live, "load_models", lambda: models)
     monkeypatch.setattr(tshark_live, "tshark_path", lambda: "fake-tshark")
     monkeypatch.setattr(tshark_live.subprocess, "Popen", popen)
-    monkeypatch.setattr(tshark_live.time, "perf_counter", lambda: next(ticks))
+    monkeypatch.setattr(tshark_live, "time", SimpleNamespace(
+        perf_counter=lambda: next(ticks), strftime=tshark_live.time.strftime))
 
     tshark_live.capture(SimpleNamespace(name="sample", iface="test-iface", duration=2,
                                        dst="A", no_os=True))
