@@ -32,6 +32,9 @@
 ## 실험·측정 스크립트 (in-lab 데이터 필요)
 | 목적 | 명령 | 결과 위치 |
 |---|---|---|
+| 실시간 캡처 (기존 CLI 유지, 구현·서버 import: `capture.tshark_live`) | `uv run --with psutil python scripts/pilot_live.py capture --name p1_meet1 --iface Wi-Fi --duration 200` (`--no-os`면 `--with psutil` 생략 가능) | `data/pilot/<name>_{pkts,est,os}.csv` (`--no-os`면 os 제외) |
+| 모니터 on/off 비교 | `uv run --with psutil python scripts/overhead_ab.py --name p3_meet1 --dst <노트북IP>` | `data/pilot/<name>_os.csv`, `_phase.csv`, `_onK_*.csv` |
+| CPU 부하 (캡처와 별도 실행) | `uv run python scripts/cpu_load.py --name p2_meet1 --levels 0,50,80,100 --step 60` | `data/pilot/<name>_load.csv` |
 | 원인 진단 합성 실험 (IP/UDP만) | `uv run python scripts/diag_synth.py --vca meet --split test` | `data/diag/summary_*.json`, `windows_*.csv` |
 | 원인 진단 합성 실험 (RTP 순번 포함) | 위 명령 + `--rtp` | 같은 곳 (`_rtp` 접미사) |
 | 진단 규칙 조정용 (dev 세트) | `--split dev` | test 결과는 조정에 쓰지 않는다 |

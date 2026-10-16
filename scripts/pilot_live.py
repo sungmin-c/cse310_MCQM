@@ -3,6 +3,7 @@
 capture: tshark(-i 인터페이스, UDP만) → server.features.WindowFeatures → Meet 모델 4개 → 1초마다 한 줄 출력
          + psutil 1 Hz: 전체 CPU%, 통화 프로세스(chrome/Zoom) CPU%, 모니터 자신(tshark+python) CPU%
          산출물 data/pilot/<name>_pkts.csv (vcaml 14필드 형식), _est.csv, _os.csv
+캡처 구현: capture.tshark_live (라인 스트림 → 추정 콜백을 서버에서 재사용 가능).
 compare: _est.csv ↔ webrtc-internals dump(vcaml WebRTCReader)를 초(et == ts)로 맞춰 MAE 등 계산 → _cmp.csv, _summary.json
 
 실행 (repo 루트):
@@ -13,149 +14,15 @@ compare: _est.csv ↔ webrtc-internals dump(vcaml WebRTCReader)를 초(et == ts)
 내 노트북 자신의 트래픽만 캡처한다 (프로미스큐어스 모드 끔 -p).
 """
 import argparse
-import csv
 import json
-import os
-import pickle
-import shutil
 import subprocess
 import sys
 import tempfile
-import threading
-import time
-import warnings
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-OUT = Path("data/pilot")
-METRICS = {"fps": "framesReceivedPerSecond", "bitrate": "bitrate",
-           "frame_jitter": "frame_jitter", "frameHeight": "frameHeight"}
-FIELDS = ["frame.time_relative", "frame.time_epoch", "ip.src", "ip.dst", "ip.proto", "ip.len",
-          "udp.srcport", "udp.dstport", "udp.length", "rtp.ssrc", "rtp.timestamp", "rtp.seq",
-          "rtp.p_type", "rtp.marker"]                     # vcaml pcap2csv와 같은 14필드
-CALL_PROCS = {"chrome.exe", "zoom.exe"}
-
-
-def tshark_path():
-    return shutil.which("tshark") or r"C:\Program Files\Wireshark\tshark.exe"
-
-
-def load_models(folder="data/models"):
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        out = {}
-        for m in METRICS:
-            with open(Path(folder) / f"meet_{m}_cv1.pkl", "rb") as f:
-                obj = pickle.load(f)
-            out[m] = (obj.estimator, list(obj.featureMatrix.columns))
-    return out
-
-
-class OsSampler(threading.Thread):
-    """1초마다 CPU를 기록한다. 프로세스 CPU%는 전체 코어 대비(0–100)로 나눠 적는다."""
-
-    def __init__(self, path, monitor_pids):
-        super().__init__(daemon=True)
-        import psutil
-        self.ps, self.path, self.monitor_pids = psutil, path, set(monitor_pids)
-        self.stop = threading.Event()
-        self.ncpu = psutil.cpu_count() or 1
-        self.procs = {}
-
-    def _group_cpu(self):
-        call = mon = 0.0
-        for p in self.ps.process_iter(["name"]):
-            name = (p.info["name"] or "").lower()
-            if name not in CALL_PROCS and p.pid not in self.monitor_pids:
-                continue
-            q = self.procs.setdefault(p.pid, p)
-            try:
-                c = q.cpu_percent(None) / self.ncpu
-            except self.ps.Error:
-                continue
-            if p.pid in self.monitor_pids:
-                mon += c
-            else:
-                call += c
-        return call, mon
-
-    def run(self):
-        self.ps.cpu_percent(None)
-        self._group_cpu()
-        with open(self.path, "w", newline="") as f:
-            w = csv.writer(f)
-            w.writerow(["ts", "cpu_pct", "call_proc_cpu_pct", "monitor_cpu_pct", "mem_pct"])
-            while not self.stop.wait(1.0):
-                call, mon = self._group_cpu()
-                w.writerow([round(time.time(), 3), self.ps.cpu_percent(None), round(call, 1),
-                            round(mon, 1), self.ps.virtual_memory().percent])
-                f.flush()
-
-
-def parse(fields):
-    """readIpUdpFile과 같은 정리: proto가 비었거나 '17,17'처럼 여러 값이면 버린다."""
-    rel, epoch, dst, proto, ulen = fields[0], fields[1], fields[3], fields[4], fields[8]
-    if not proto or "," in proto or not dst or "," in dst:
-        return None
-    return float(epoch), float(rel), dst, int(proto), float(ulen) if ulen and "," not in ulen else 0.0
-
-
-def capture(a):
-    from server.features import WindowFeatures
-    OUT.mkdir(parents=True, exist_ok=True)
-    models = load_models()
-    wf = WindowFeatures(vca="meet", dst_ip=a.dst)
-    cmd = [tshark_path(), "-i", a.iface, "-p", "-f", "udp", "-l", "-n",
-           "-d", "udp.port==1024-49152,rtp", "-T", "fields", "-E", "separator=/t"]
-    for fld in FIELDS:
-        cmd += ["-e", fld]
-    if a.duration:
-        cmd += ["-a", f"duration:{a.duration}"]
-    ts = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
-    samp = None
-    if not a.no_os:
-        samp = OsSampler(OUT / f"{a.name}_os.csv", [os.getpid(), ts.pid])
-        samp.start()
-
-    pk = open(OUT / f"{a.name}_pkts.csv", "w", newline="")
-    es = open(OUT / f"{a.name}_est.csv", "w", newline="")
-    pw, ew = csv.writer(pk), csv.writer(es)
-    pw.writerow(FIELDS)
-    ew.writerow(["et", "n_pkts", *METRICS, "tick_ms"])
-
-    def emit(w):
-        t = time.perf_counter()
-        pred = {m: float(est.predict(w[cols])[0]) for m, (est, cols) in models.items()}
-        ms = (time.perf_counter() - t) * 1000
-        ew.writerow([int(w["et"].iloc[0]), int(w["l_num_pkts"].iloc[0]),
-                     *(round(pred[m], 2) for m in METRICS), round(ms, 1)])
-        es.flush()
-        print(f"{time.strftime('%H:%M:%S')} fps {pred['fps']:5.1f}  kbps {pred['bitrate'] / 1000:7.0f}  "
-              f"h {pred['frameHeight']:4.0f}  jit {pred['frame_jitter']:5.1f}  ({ms:.0f} ms)", flush=True)
-
-    print(f"capture → {OUT}/{a.name}_*.csv   (멈추기: Ctrl+C)", flush=True)
-    try:
-        for line in ts.stdout:
-            fields = line.rstrip("\n").split("\t")
-            if len(fields) < len(FIELDS):
-                continue
-            pw.writerow(fields)
-            r = parse(fields)
-            if r is not None and (w := wf.push(*r)) is not None:
-                emit(w)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        ts.terminate()
-        if (w := wf.flush()) is not None:
-            emit(w)
-        if samp:
-            samp.stop.set()
-            samp.join(2)
-        pk.close()
-        es.close()
-        print("dst ip:", wf.dst_ip or max(wf._dst_bytes, key=wf._dst_bytes.get, default=None))
+from capture.tshark_live import METRICS, OUT, capture, tshark_path  # noqa: E402
 
 
 def compare(a):

@@ -1,6 +1,8 @@
 # MCQM 프로젝트 로그: 무엇을 만들고, 무엇을 시험했고, 왜 했는가
 
-기준일: 2026-10-15. 상세 수치와 한계는 `docs/PROGRESS.md`, 방향과 설계는 `docs/PROJECT_SPEC.md`.
+기준일: 2026-10-16. 상세 수치와 한계는 `docs/PROGRESS.md`, 방향과 설계는 `docs/PROJECT_SPEC.md`.
+
+T1 (10/16): `pilot_live.py` 캡처를 `capture/tshark_live.py`로 분리하고, 서버에서 재사용할 `process_lines(lines, models, emit, ...)` 콜백 경로를 추가했다. 기존 CLI·CSV 형식을 유지하고 `overhead_ab.py` import와 COMMANDS를 갱신했다. 합성 라인·가짜 모델 테스트를 추가했지만 지정 pytest는 uv cache 및 공유 Python interpreter 접근 오류로 시작하지 못했다. 전체 테스트·CLI 실행과 실제 tshark 라이브 캡처는 미확인이다.
 
 **프로젝트가 풀려는 질문 3가지:** 아래 "목적"은 이 질문 중 어디에 쓰이는지를 뜻한다.
 - **Q1.** 패킷 헤더만으로 Windows에서 Meet·Zoom의 fps 같은 품질을 실시간으로 얼마나 정확히 추정할 수 있는가?
