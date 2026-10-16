@@ -14,5 +14,7 @@
 
 ## 3단계 — T4 tick 연결 (T4 커밋·PASS 뒤, `ml/t4-ws` 위)
 - 창마다 수신 영상 패킷의 `(ip.src, udp.srcport)` 바이트 합 최대를 `flow`로, 2초 이내 최근 OS 샘플을 `device`로 `Diagnoser.update`에 넘긴다. Replay는 `--os` CSV(열이 없으면 `device=None`).
+- Live는 T4 `server/app.py`가 psutil을 따로 계산한다(10/16 미커밋 기준 `:237` 근처) → 거기서도 1단계 `core_util`을 재사용해 `device.call_core_pct`를 채운다. 계산을 새로 짜지 않는다.
+- (1단계 확인 결과, Claude 10/16) os.csv를 위치로 읽는 코드는 없다. T4 Replay도 `csv.DictReader`라 마지막 열 추가는 안전.
 
 완료 기준 = 단계별 테스트 통과 + 새 의존성 없음 + dashboard/·vcaml/ 변경 없음. 보고에 실측(실제 psutil affinity 값, 2코어 고정 시 ≥ 85 근처인지)은 "미확인"으로 적는다 — W3 S0-4에서 사용자가 확인.
