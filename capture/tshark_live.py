@@ -18,6 +18,11 @@ FIELDS = ["frame.time_relative", "frame.time_epoch", "ip.src", "ip.dst", "ip.pro
 CALL_PROCS = {"chrome.exe", "zoom.exe"}
 
 
+def core_util(percpu, cores):
+    values = [percpu[i] for i in cores] if cores else percpu
+    return sum(values) / len(values) if values else 0.0
+
+
 def tshark_path():
     return shutil.which("tshark") or r"C:\Program Files\Wireshark\tshark.exe"
 
@@ -61,16 +66,29 @@ class OsSampler(threading.Thread):
                 call += c
         return call, mon
 
+    def call_core_pct(self):
+        cores = set()
+        for p in self.ps.process_iter(["name"]):
+            if (p.info["name"] or "").lower() in CALL_PROCS:
+                try:
+                    cores.update(p.cpu_affinity())
+                except self.ps.Error:
+                    continue
+        return core_util(self.ps.cpu_percent(None, percpu=True), cores)
+
     def run(self):
         self.ps.cpu_percent(None)
+        self.ps.cpu_percent(None, percpu=True)
         self._group_cpu()
         with open(self.path, "w", newline="") as f:
             w = csv.writer(f)
-            w.writerow(["ts", "cpu_pct", "call_proc_cpu_pct", "monitor_cpu_pct", "mem_pct"])
+            w.writerow(["ts", "cpu_pct", "call_proc_cpu_pct", "monitor_cpu_pct", "mem_pct",
+                        "call_core_pct"])
             while not self.stop.wait(1.0):
                 call, mon = self._group_cpu()
                 w.writerow([round(time.time(), 3), self.ps.cpu_percent(None), round(call, 1),
-                            round(mon, 1), self.ps.virtual_memory().percent])
+                            round(mon, 1), self.ps.virtual_memory().percent,
+                            round(self.call_core_pct(), 1)])
                 f.flush()
 
 
