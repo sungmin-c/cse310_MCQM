@@ -75,5 +75,5 @@ Diagnoser.update(f, rssi_dbm=None, seq_loss=None, device=None, flow=None) -> (ca
 
 ## 열린 질문 / [가정]
 - 임계값 85%와 우선순위 4번 위치는 [가정] → W3 dev로 조정. P2는 배터리 상태, W3는 충전기 연결이라 포화 양상이 다를 수 있다.
-- Zoom(`zoom.exe`)도 같은 지표로 되는지 [미확인] — W4 Zoom 수집에 C 조건 포함 여부는 W3 결과 뒤 결정.
+- Teams는 Chrome 웹 클라이언트라 `chrome.exe` 그대로 적용된다 [가정]. W4 Teams 수집은 C 조건 포함(`w3_collection.md` §9, v8에서 Zoom 제외). W3에서 S0-4가 실패하면 Teams도 C 조건 보류. v0.1 합성 실험에서 같은 규칙이 앱마다 다르게 들었으므로(Teams 약 270 pkt/s) 임계값은 앱별로 dev에서 따로 조정한다.
 - 메모리(`mem_pct` 85–86%로 상시 높음)는 원인 후보에서 뺐다. 근거 자료 없음.

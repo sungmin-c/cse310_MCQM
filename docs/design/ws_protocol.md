@@ -48,7 +48,7 @@ uv run python -m server.app --replay data/pilot/<name>_pkts.csv [--truth <webrtc
 |---|---|---|
 | `ts` | `row["et"]` (float) | `WindowFeatures._emit(et=…)`: 창을 닫은 패킷의 epoch를 `int`로 자른 값 = 창 끝 시각. Replay도 **원래 캡처 시각**(재생 시각 아님) |
 | `mode` | `"live"` \| `"replay"` | 시작 인자. `whatif`는 W5 |
-| `app` | `--app` (기본 `meet`) | 모델은 meet용뿐 → zoom이면 추정이 부정확(P4). `validated`로 표시 |
+| `app` | `--app` (기본 `meet`) | 모델은 meet용뿐 → zoom이면 추정이 부정확(P4). `validated`로 표시. v7: `teams` 선택지 추가 예정(T9, 코드 미반영) |
 | `window_s` | `1.0` | `config["prediction_window"]` |
 | `est.fps` | `row["fps"]` 반올림 1자리 | |
 | `est.bitrate_kbps` | `row["bitrate"] / 1000` | **bps → kbps 변환은 서버가** (SCHEMA) |

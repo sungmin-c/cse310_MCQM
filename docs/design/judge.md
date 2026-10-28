@@ -9,7 +9,7 @@ judge(est: dict, vca: str, state: JudgeState) -> dict
 # est: {"fps": float, "bitrate": float(bps), "frameHeight": float, "frame_jitter": float(ms)} 일부 NaN/None 허용
 # return: {"fps": "good", "bitrate": "fair", "frameHeight": "poor", "frame_jitter": "good",
 #          "overall": "poor",            # 지표 중 최악. unknown은 제외 (전부 unknown이면 unknown)
-#          "validated": bool}            # Meet=True 가능, Zoom/Kakao=False ("모델 추정값")
+#          "validated": bool}            # Meet=True 가능, Teams=정답 경로 확인 전 False, Zoom=False ("모델 추정값")
 ```
 `JudgeState`: 지표별 최근 raw 등급 deque(maxlen=2) + 통화 초반 기준선. **상태는 호출자가 보관**(서버 세션당 1개), 함수는 순수에 가깝게.
 
