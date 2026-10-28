@@ -16,7 +16,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketDisconnected
 
-from capture.tshark_live import FIELDS, OsSampler, load_models, parse, process_lines, tshark_path
+from capture.tshark_live import FIELDS, OsSampler, load_models, parse, process_lines, tshark_cmd
 from scripts.pilot_live import select_truth
 from server.diagnosis import Diagnoser
 from server.features import stream_csv
@@ -40,7 +40,11 @@ def parse_args(argv=None):
     ap.add_argument("--loop", action="store_true")
     ap.add_argument("--schema", choices=("v1", "v1.2"), default="v1")
     ap.add_argument("--port", type=int, default=8000)
+    ap.add_argument("--snaplen", type=int, default=0, help="tshark 패킷당 캡처 바이트 (0 = 전체, 경량: 96)")
+    ap.add_argument("--every", type=int, default=1, help="N초마다 한 번 추론 (캡처는 계속, 경량: 5)")
     a = ap.parse_args(argv)
+    if a.snaplen < 0 or a.every < 1:
+        ap.error("--snaplen must be >= 0 and --every >= 1")
     if not math.isfinite(a.speed) or a.speed < 0:
         ap.error("--speed must be finite and nonnegative")
     if not 1 <= a.port <= 65535:
@@ -154,11 +158,7 @@ def create_app(options, models=None):
 
     def live_lines():
         nonlocal process
-        command = [tshark_path(), "-i", options.iface, "-p", "-f", "udp", "-l", "-n",
-                   "-d", "udp.port==1024-49152,rtp", "--enable-heuristic", "rtp_udp",
-                   "-T", "fields", "-E", "separator=/t"]  # capture/tshark_live.py capture()와 같은 인자
-        for field in FIELDS:
-            command += ["-e", field]
+        command = tshark_cmd(options.iface, getattr(options, "snaplen", 0))  # capture()와 같은 인자
         # stderr는 파이프로 쌓아 두면 캡처가 멈출 수 있으므로 소비하지 않는 파이프를 만들지 않는다.
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                                    text=True, encoding="utf-8", errors="replace")
@@ -271,7 +271,7 @@ def create_app(options, models=None):
 
                 source = live_lines() if options.live else replay_lines()
                 process_lines(source, ready_models, lambda row: None, dst_ip=options.dst,
-                              feature_emit=emit)
+                              feature_emit=emit, every=getattr(options, "every", 1))
                 if options.live or not options.loop:
                     break
                 if stop.wait(0.01):

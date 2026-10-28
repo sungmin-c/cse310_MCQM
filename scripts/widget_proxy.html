@@ -1,0 +1,50 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>MCQM widget proxy (P5)</title>
+<!-- P5 실험용 대역 위젯: 실제 위젯 전의 최악 조건 대리. 1초마다 숫자 4개와 60초 차트를 다시 그린다.
+     실행: 이 파일을 Chrome에서 열고 [PiP 열기]를 눌러 통화 창 위에 둔다. 포트 8001의 서버에 붙는다(overhead_ab --modes widget). -->
+<style>
+  body { margin: 0; font: 14px system-ui; background: #111; color: #eee; }
+  #box { padding: 8px; width: 320px; }
+  #n { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; font-variant-numeric: tabular-nums; }
+  canvas { width: 304px; height: 80px; background: #1b1b1b; margin-top: 6px; }
+  button { margin: 8px; }
+</style>
+<button id="pip">PiP 열기</button>
+<div id="box">
+  <div id="n"><span>fps</span><b id="fps">–</b><span>bitrate kbps</span><b id="br">–</b>
+    <span>jitter ms</span><b id="jit">–</b><span>height</span><b id="h">–</b><span>qoe</span><b id="q">–</b></div>
+  <canvas id="c" width="304" height="80"></canvas>
+  <div id="st">연결 대기 (ws://127.0.0.1:8001/ws)</div>
+</div>
+<script>
+const E = {}, hist = [];
+for (const el of document.querySelectorAll("[id]")) E[el.id] = el;   // PiP로 옮겨도 참조가 유지되도록 미리 잡는다
+const $ = id => E[id];
+function draw(ctx, w, h) {
+  ctx.clearRect(0, 0, w, h);
+  for (const [key, color, max] of [["fps", "#4caf50", 40], ["br", "#2196f3", 4000]]) {
+    ctx.strokeStyle = color; ctx.beginPath();
+    hist.forEach((p, i) => { const x = i * w / 60, y = h - Math.min(p[key] / max, 1) * h; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.stroke();
+  }
+}
+function connect() {
+  const ws = new WebSocket("ws://127.0.0.1:8001/ws");
+  ws.onopen = () => $("st").textContent = "연결됨";
+  ws.onmessage = e => {
+    const t = JSON.parse(e.data);
+    $("fps").textContent = t.est.fps; $("br").textContent = Math.round(t.est.bitrate_kbps);
+    $("jit").textContent = Math.round(t.est.frame_jitter_ms); $("h").textContent = t.est.height; $("q").textContent = t.qoe;
+    hist.push({ fps: t.est.fps, br: t.est.bitrate_kbps }); if (hist.length > 60) hist.shift();
+    const c = $("c"); draw(c.getContext("2d"), c.width, c.height);
+  };
+  ws.onclose = () => { $("st").textContent = "끊김, 1초 뒤 재연결"; setTimeout(connect, 1000); };   // 서버가 단계마다 다시 뜬다
+}
+connect();
+$("pip").onclick = async () => {
+  const win = await documentPictureInPicture.requestWindow({ width: 330, height: 200 });
+  win.document.body.style.cssText = "margin:0;background:#111;color:#eee;font:14px system-ui";
+  win.document.body.append($("box"));
+};
+</script>

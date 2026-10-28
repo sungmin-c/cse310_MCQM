@@ -257,3 +257,21 @@ def test_capture_preserves_csv_format_and_tshark_arguments(tmp_path, monkeypatch
                                         "stderr": tshark_live.subprocess.DEVNULL, "text": True})]
     assert process.terminated == 1
     assert {path.name for path in tmp_path.iterdir()} == {"sample_pkts.csv", "sample_est.csv"}
+
+
+def test_tshark_cmd_snaplen_only_when_set(monkeypatch):
+    monkeypatch.setattr(tshark_live, "tshark_path", lambda: "t")
+    assert "-s" not in tshark_live.tshark_cmd("Wi-Fi")
+    cmd = tshark_live.tshark_cmd("Wi-Fi", snaplen=96, duration=5)
+    assert cmd[cmd.index("-s") + 1] == "96" and cmd[-2:] == ["-a", "duration:5"]
+
+
+def test_process_lines_every_skips_inference_but_keeps_windows():
+    models = fake_models(["l_num_pkts"])
+    emitted = []
+    process_lines([line(0.5), line(1.6), line(2.7), line(3.8), line(4.9)], models, emitted.append,
+                  dst_ip="A", every=2)
+
+    assert [row["n_pkts"] for row in emitted] == [1, 1, 1]  # 창 5개 중 1·3·5번째만 추정
+    for model, _ in models.values():
+        assert len(model.calls) == 3

@@ -99,6 +99,10 @@ def main():
     c.add_argument("--duration", type=int, default=0, help="초. 0이면 Ctrl+C까지")
     c.add_argument("--dst", default=None, help="노트북 IP (없으면 UDP 바이트가 가장 많은 dst)")
     c.add_argument("--no-os", action="store_true", help="CPU 기록 끔")
+    c.add_argument("--snaplen", type=int, default=0, help="tshark 패킷당 캡처 바이트 (0 = 전체, 경량: 96)")
+    c.add_argument("--every", type=int, default=1, help="N초마다 한 번 추론 (캡처는 계속, 경량: 5)")
+    o = sub.add_parser("osonly", help="P5 경량 대조: psutil 1 Hz 기록만 (tshark·모델 없음)")
+    o.add_argument("--duration", type=int, required=True)
     p = sub.add_parser("compare")
     p.add_argument("--name", required=True)
     p.add_argument("--dump", required=True)
@@ -107,6 +111,14 @@ def main():
         subprocess.run([tshark_path(), "-D"])
     elif a.cmd == "capture":
         capture(a)
+    elif a.cmd == "osonly":
+        import os
+        import time
+        from capture.tshark_live import OsSampler
+        samp = OsSampler(os.devnull, [os.getpid()])
+        samp.start()
+        time.sleep(a.duration)
+        samp.stop.set()
     else:
         compare(a)
 
