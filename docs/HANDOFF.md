@@ -4,12 +4,12 @@
 > 완료 항목은 한 줄로 줄여 PROJECT_LOG에 옮기고 여기서 지운다.
 
 ## 현재 상태 (갱신: 2026-10-28, Claude)
-- **v8 (10/28)**: **Zoom 제외, 측정 앱 = Meet ≈30 + Teams ≈15**, 측정은 Windows 노트북 + Chrome 웹만. 부족하면 Teams부터 축소. SPEC v8·PROGRESS Q25·`w3_collection.md` §8–9. v7의 조치 안내 + 회복 검증·미니 위젯은 그대로. 문서만 바뀌었고 코드는 그대로(`--app`에 teams 없음, zoom 선택지 남음)
+- **v8 (10/28)**: **Zoom 제외, 측정 앱 = Meet ≈30 + Teams ≈15**, 측정은 Windows 노트북 + Chrome 웹만. 부족하면 Teams부터 축소. SPEC v8·PROGRESS Q25·`w3_collection.md` §8–9. v7의 조치 안내 + 회복 검증·미니 위젯은 그대로. T9a에서 서버·더미 `--app teams` 추가(미커밋, 리뷰 대기), zoom 선택지는 호환용 유지.
 - 주차: W3 (10/27–11/2). 코드 main 병합 완료(PR #9, `9655017`), main pytest 197 passed. 다음은 **사용자 W3 S0 사전 점검 → Meet 30통화, 같은 주에 Teams 파일럿(T9)**, Claude는 T10 설계. 교수님께 `docs/SCOPE_CHANGE_v8.md` 전달(사용자)
 - Codex는 프로젝트 파일 편집과 번들 Python 실행 가능(10/26 PPT 생성 확인). `.venv`·pytest·Git 상태 확인은 submodule 접근 오류가 있어 이번 세션 미확인
 - 테스트 환경: 이벤트 루프 생성 시 `socket.socketpair()`가 WinError 10014로 가끔 실패(앱 없이 `asyncio.run`만 돌려도 300회 중 27회). `3730af1`(test_ws 재시도)에도 main test_ws 반복에서 일부 실패(재시도가 못 막는 경로 남음, `ProactorEventLoop._ssock` AttributeError 포함). 실패가 이 오류뿐이면 환경 문제로 본다. 원인 미확인
 - 이번 세션 발견: P2P 흐름 포트가 49152를 넘으면 tshark가 RTP를 해석 못 함 → T1에 수정 커밋 `31243bf`(PR #6). 코어 고정 시 CPU%가 낮게 보임 → `call_core_pct` 설계
-- 마지막 작업자: Claude (v8 범위 문서 반영; 코드 변경 없음)
+- 마지막 작업자: Codex (T9a 구현·테스트 완료, Claude 리뷰 대기)
 
 ## 역할과 모델/effort 추천표 (시작값. 결과가 나쁘면 한 단계 올리고 이유를 아래 기록에 남긴다)
 | 작업 유형 | 담당 | 모델 · effort | 이유 |
@@ -35,10 +35,11 @@
 | T10 | 조치·회복 설계 → `docs/design/recovery.md`: 조치 문구, 회복 판정 규칙(N초 유지·T초 제한), SCHEMA 필드·"조치함" client→server 메시지 제안, 테스트 표 | Claude → Opus·high | ⬜ | SPEC v8 §5-1, ws_protocol | 설계 문서 + 팀원 확인 질문 |
 | T11 | 위젯 PiP 스파이크: `documentPictureInPicture.requestWindow()`로 더미 스트림 표시, Meet 전체 화면 위에 뜨는지 | 팀원(Web) | ⬜ W2 | SPEC v8 §1 | 가능/불가 + 스크린샷 |
 | T12 | 오버헤드 실험 P5: 준비 R1–R6 구현 → 사용자 실측 E1–E7 → 해석 | 구현 Claude Sonnet·medium (또는 Codex luna·medium) → 사용자 → 해석 Claude Opus·high | 🟡 준비 R1–R6 구현 완료(10/28, 미커밋, pytest 201 통과, dry-run 확인). 실측 10/31–11/1 | `docs/design/overhead_weekend.md`, PROGRESS Q27·P3 | R1–R6 + pytest 통과 / 실측 csv·dump / PROGRESS "P5" |
-| T9a | `--app teams` 추가 (server·dummy_stream·문서) — `docs/briefs/T9a.md` | Codex sol·high → Claude Opus·high 리뷰 (`run_queue.ps1`) | ⬜ 10/28 야간 큐 | brief | pytest 통과, zoom은 유지 |
+| T9a | `--app teams` 추가 (server·dummy_stream·문서) — `docs/briefs/T9a.md` | Codex sol·high → Claude Opus·high 리뷰 (`run_queue.ps1`) | 🟡 구현 완료·리뷰 대기(미커밋), 192 passed / 1 skipped | brief | pytest 통과, zoom은 유지 |
 | T13 | P5 도구 보강 (build_phases·입력 검증·report 견고성·테스트) — `docs/briefs/T13.md` | Codex sol·high → Claude Opus·high 리뷰 (`run_queue.ps1`) | ⬜ 10/28 야간 큐 | brief, overhead_weekend.md | pytest 통과, 실측 전 병합 |
 
 ## 기록 (최신이 위. 항목당 3줄 이내: 한 일 / 다음 담당·모델·effort 추천+이유 / 남은 위험)
+- 2026-10-28 Codex T9a: 서버·더미 CLI에 teams 추가, COMMANDS·ws_protocol 반영, 테스트 6개 추가. 모델은 Meet 고정·임계값 공통·judge validated는 Meet만 true이므로 분기 수정 없음; Live tick은 false 유지. `uv run --no-sync pytest tests/ -q`: 192 passed, 1 skipped(데이터 의존 테스트는 in-lab 자료 없을 때 skip; 최대 15개 대신 1개 수집). `git diff --check` 통과. 다음: Claude Opus·high 리뷰(반대 AI 검토). 위험: Teams 정답은 T9 전 미확인, 실제 캡처 미실행; 후속 collect-only 확인은 uv cache 접근 거부로 미확인. push 없음.
 - 2026-10-28 Claude: 범위 v8(Zoom 제외, Meet 30 + Teams 15) 반영 — SPEC v8, w3_collection §8 T9·§9 Teams, diagnosis_v1 L78, PROGRESS Q22·Q25·일정·M3·M4, LOG #37, README·AGENTS, 교수님 메모 `SCOPE_CHANGE_v8.md`. 코드 변경 없음(pytest 미실행). 다음: 사용자 S0·Meet 수집·T9, T10은 Claude Opus·high. 위험: Teams 웹 정답 미확인, 코드·SCHEMA·ws_protocol·COMMANDS에 `zoom` 선택지·문구 남음(코드 정리 때 함께).
 - 2026-10-26 Codex: `SCRIPT_ChatGPT.md` 기준 목차 포함 12장 Google Meet/Google 색 테마 덱과 재생성 스크립트 작성. 구조·발표자 노트·슬라이드 경계 확인, PowerPoint COM 접근 거부로 PNG 렌더링은 미확인. 다음: 사용자 자료 확인 후 화면 캡처가 있으면 슬라이드 4 갱신; 추가 편집 Codex gpt-6-luna·medium(Fast). 위험: 시각적 최종 확인 미완료.
 - 2026-10-25 Codex: `SCRIPT_ChatGPT.md` Slide 1–11 본문과 기존 미니멀 PPT를 대조하고 `MCQM_Proposal_Minimal_2026-10-25_updated.pptx` 생성. 슬라이드 2–11 화면 문구·전 슬라이드 노트 갱신, 이전 수치·일정 제거, PowerPoint 11장 렌더링·구조 검사 완료. 다음: 사용자 리허설, 추가 표현 수정은 Codex gpt-6-luna·medium(Fast; 범위 명확). 위험: Teams 정답·라이브 정확도는 여전히 미확인.

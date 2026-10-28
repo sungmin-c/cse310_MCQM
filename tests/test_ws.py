@@ -155,6 +155,25 @@ async def until(predicate):
     await asyncio.wait_for(wait(), 5)
 
 
+@pytest.mark.parametrize("schema", ["v1", "v1.2"])
+def test_teams_live_tick_is_unvalidated(schema):
+    options = ws_app.parse_args(["--live", "--app", "teams", "--schema", schema])
+    assert options.app == "teams"
+    row = {"et": 1001, "fps": 30, "bitrate": 1500000,
+           "frame_jitter": 10, "frameHeight": 720}
+    features = dict.fromkeys(("l_num_bytes", "l_num_pkts", "t_q1", "t_q2", "t_std", "t_max"), 1)
+    tick = ws_app.build_tick(row, features, options, ws_app.JudgeState(),
+                             ws_app.Diagnoser(), 70, truth=ws_app._metrics(row))
+    assert tick["app"] == "teams" and tick["mode"] == "live"
+    assert tick["truth"] is None and tick["validated"] is False
+    if schema == "v1":
+        check(tick)
+    else:
+        expected = ws_app.judge(row, "meet", ws_app.JudgeState())
+        expected.pop("validated")
+        assert tick["judgement"] == expected
+
+
 def test_replay_ticks_match_v1_and_truth_uses_exact_epoch(packets, monkeypatch):
     truth = pd.DataFrame({"ts": [1000, 1001, 1002, 1004],
                           "framesReceivedPerSecond": [99, 29.5, 30, 28],

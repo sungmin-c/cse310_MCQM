@@ -18,7 +18,7 @@
 ## 2. 실행 (T4가 만들 명령, [가정] 모듈명 `server/app.py`)
 ```powershell
 # Live: tshark 실시간 (T1 capture/tshark_live.py 경로 재사용)
-uv run python -m server.app --live --iface Wi-Fi [--dst <내 노트북 IP>] [--app meet|zoom]
+uv run python -m server.app --live --iface Wi-Fi [--dst <내 노트북 IP>] [--app meet|teams|zoom]
 # Replay: 저장된 패킷 CSV(T1 *_pkts.csv, vcaml pcap2csv와 같은 14필드) 재생
 uv run python -m server.app --replay data/pilot/<name>_pkts.csv [--truth <webrtc dump.json>] [--os data/pilot/<name>_os.csv] [--speed 1.0] [--loop]
 ```
@@ -48,7 +48,7 @@ uv run python -m server.app --replay data/pilot/<name>_pkts.csv [--truth <webrtc
 |---|---|---|
 | `ts` | `row["et"]` (float) | `WindowFeatures._emit(et=…)`: 창을 닫은 패킷의 epoch를 `int`로 자른 값 = 창 끝 시각. Replay도 **원래 캡처 시각**(재생 시각 아님) |
 | `mode` | `"live"` \| `"replay"` | 시작 인자. `whatif`는 W5 |
-| `app` | `--app` (기본 `meet`) | 모델은 meet용뿐 → zoom이면 추정이 부정확(P4). `validated`로 표시 |
+| `app` | `--app` (기본 `meet`, `teams`·`zoom` 지원) | 모델은 meet용뿐 → zoom이면 추정이 부정확(P4). teams는 meet 모델을 그대로 쓴 추정값, 정답 검증은 T9 이후 [가정] |
 | `window_s` | `1.0` | `config["prediction_window"]` |
 | `est.fps` | `row["fps"]` 반올림 1자리 | |
 | `est.bitrate_kbps` | `row["bitrate"] / 1000` | **bps → kbps 변환은 서버가** (SCHEMA) |
