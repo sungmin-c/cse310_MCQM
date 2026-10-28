@@ -36,7 +36,7 @@ def aggregate(phase, tables, skip=15):
         for df in tables.values():
             win = df[(df["ts"] >= start + skip) & (df["ts"] < end - 1)]
             for c in df.columns:
-                if c != "ts" and len(win):
+                if c != "ts":
                     row[c] = win[c].mean()
         per.append(row)
     frame = pd.DataFrame(per)
@@ -82,15 +82,15 @@ def perf_table(path):
     """typeperf csv → ts, pages_sec, gpu_pct. 시각은 로컬 시간."""
     raw = pd.read_csv(path)
     raw.columns = [c.strip() for c in raw.columns]
-    ts = pd.to_datetime(raw.iloc[:, 0], format="mixed").map(lambda t: t.timestamp())
+    ts = pd.to_datetime(raw.iloc[:, 0], format="mixed").map(lambda t: t.to_pydatetime().timestamp())
     num = raw.iloc[:, 1:].apply(pd.to_numeric, errors="coerce")
     out = pd.DataFrame({"ts": ts})
     pages = [c for c in num if "Pages/sec" in c]
     gpu = [c for c in num if "GPU Engine" in c]
     if pages:
-        out["pages_sec"] = num[pages].sum(axis=1)
+        out["pages_sec"] = num[pages].sum(axis=1, min_count=1)
     if gpu:
-        out["gpu_pct"] = num[gpu].sum(axis=1)
+        out["gpu_pct"] = num[gpu].sum(axis=1, min_count=1)
     return out
 
 
@@ -145,6 +145,9 @@ def main():
     ap.add_argument("--dump")
     ap.add_argument("--skip", type=int, default=15)
     a = ap.parse_args()
+    missing = [OUT / f"{a.name}_{k}.csv" for k in ("os", "mem") if not (OUT / f"{a.name}_{k}.csv").is_file()]
+    if missing:
+        ap.error("필수 파일이 없습니다: " + ", ".join(str(p) for p in missing))
     phase = pd.read_csv(OUT / f"{a.name}_phase.csv")
     tables = {k: pd.read_csv(OUT / f"{a.name}_{k}.csv") for k in ("os", "mem")}
     if (OUT / f"{a.name}_perf.csv").exists():

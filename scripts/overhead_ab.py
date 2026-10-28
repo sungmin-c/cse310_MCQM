@@ -20,6 +20,7 @@
 """
 import argparse
 import csv
+import os
 import subprocess
 import sys
 import threading
@@ -153,7 +154,13 @@ def run_phase(mode, a, sec, k, mon):
         mon["proc"] = None
 
 
-def main():
+def build_phases(modes, pairs, step, warm):
+    """warm 뒤에 각 바퀴의 시작 단계를 한 칸씩 돌린다."""
+    return [("warm", warm)] + [(modes[(i + r) % len(modes)], step)
+                              for r in range(pairs) for i in range(len(modes))]
+
+
+def parse_args(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--name", required=True)
     ap.add_argument("--dst", required=True, help="노트북 IP")
@@ -165,8 +172,20 @@ def main():
     ap.add_argument("--snaplen", type=int, default=0)
     ap.add_argument("--every", type=int, default=1)
     ap.add_argument("--pin-monitor", type=int, default=0, help="모니터를 코어 0..N-1에 묶음 (0이면 끔)")
-    a = ap.parse_args()
-    modes = a.modes.split(",")
+    a = ap.parse_args(argv)
+    a.modes = a.modes.split(",")
+    allowed = ("off", "on", "capture", "server", "widget", "os")
+    if any(mode not in allowed for mode in a.modes):
+        ap.error("--modes는 off,on,capture,server,widget,os만 허용합니다")
+    if not 0 <= a.pin_monitor < (os.cpu_count() or 1):
+        ap.error("--pin-monitor는 0 이상 논리 코어 수 미만이어야 합니다")
+    if a.pairs < 1 or a.step < 1:
+        ap.error("--pairs와 --step은 1 이상이어야 합니다")
+    return a
+
+
+def main():
+    a = parse_args()
 
     OUT.mkdir(parents=True, exist_ok=True)
     samp = OsSampler(OUT / f"{a.name}_os.csv", [])
@@ -174,8 +193,7 @@ def main():
     mon = {"proc": None}
     mem = threading.Thread(target=sample_mem, args=(OUT / f"{a.name}_mem.csv", samp.stop, mon), daemon=True)
     mem.start()
-    phases = [("warm", a.warm)] + [(modes[(i + r) % len(modes)], a.step)
-                                    for r in range(a.pairs) for i in range(len(modes))]
+    phases = build_phases(a.modes, a.pairs, a.step, a.warm)
     k = 0
     with open(OUT / f"{a.name}_phase.csv", "w", newline="") as f:
         w = csv.writer(f)

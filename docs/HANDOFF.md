@@ -36,9 +36,10 @@
 | T11 | 위젯 PiP 스파이크: `documentPictureInPicture.requestWindow()`로 더미 스트림 표시, Meet 전체 화면 위에 뜨는지 | 팀원(Web) | ⬜ W2 | SPEC v8 §1 | 가능/불가 + 스크린샷 |
 | T12 | 오버헤드 실험 P5: 준비 R1–R6 구현 → 사용자 실측 E1–E7 → 해석 | 구현 Claude Sonnet·medium (또는 Codex luna·medium) → 사용자 → 해석 Claude Opus·high | 🟡 준비 R1–R6 구현 완료(10/28, 미커밋, pytest 201 통과, dry-run 확인). 실측 10/31–11/1 | `docs/design/overhead_weekend.md`, PROGRESS Q27·P3 | R1–R6 + pytest 통과 / 실측 csv·dump / PROGRESS "P5" |
 | T9a | `--app teams` 추가 (server·dummy_stream·문서) — `docs/briefs/T9a.md` | Codex sol·high → Claude Opus·high 리뷰 (`run_queue.ps1`) | ⬜ 10/28 야간 큐 | brief | pytest 통과, zoom은 유지 |
-| T13 | P5 도구 보강 (build_phases·입력 검증·report 견고성·테스트) — `docs/briefs/T13.md` | Codex sol·high → Claude Opus·high 리뷰 (`run_queue.ps1`) | ⬜ 10/28 야간 큐 | brief, overhead_weekend.md | pytest 통과, 실측 전 병합 |
+| T13 | P5 도구 보강 (build_phases·입력 검증·report 견고성·테스트) — `docs/briefs/T13.md` | Codex sol·high → Claude Opus·high 리뷰 (`run_queue.ps1`) | 🟡 구현 완료(10/28), 테스트 21케이스 추가. Python 접근 거부로 pytest 실행 전 차단·통과 미확인 | brief, overhead_weekend.md | pytest 통과, 실측 전 병합 |
 
 ## 기록 (최신이 위. 항목당 3줄 이내: 한 일 / 다음 담당·모델·effort 추천+이유 / 남은 위험)
+- 2026-10-28 Codex: T13 단계 생성 순수 함수·실행 전 CLI 검증, report 필수 CSV 누락 안내·빈 단계 표시·typeperf 로컬 시각/결측/GPU 합산 보강. 테스트 21케이스 추가, 기본 단계 순서·CLI 기본값·§3 기준 유지. 다음: 정상 환경에서 전체 pytest → Claude Opus·high 리뷰(반대편 AI 검토). 위험: 지정 pytest는 Python 접근 거부로 시작 못 함, 실측 미확인·push 없음.
 - 2026-10-28 Claude: T10 설계 `docs/design/recovery.md` — 조치 문구(ko/en), 회복 판정(ok 3조건, N=5·T=30 [가정], 하한 N+1초), tick `recovery` 필드·`{"type":"action"}` 제안, 평가 4지표, 테스트 R1–R18, 팀원 Q10–Q15. 코드 변경 없음. 다음: 팀원 답 → W4 구현 Codex luna·medium(범위 명확). 위험: Live 진단 `seq_loss=None`이라 `loss` 회복 평가는 RTP 결합 후, 대역폭 해제 후 Chrome 재상승 속도 미확인.
 - 2026-10-28 Claude: 범위 v8(Zoom 제외, Meet 30 + Teams 15) 반영 — SPEC v8, w3_collection §8 T9·§9 Teams, diagnosis_v1 L78, PROGRESS Q22·Q25·일정·M3·M4, LOG #37, README·AGENTS, 교수님 메모 `SCOPE_CHANGE_v8.md`. 코드 변경 없음(pytest 미실행). 다음: 사용자 S0·Meet 수집·T9, T10은 Claude Opus·high. 위험: Teams 웹 정답 미확인, 코드·SCHEMA·ws_protocol·COMMANDS에 `zoom` 선택지·문구 남음(코드 정리 때 함께).
 - 2026-10-26 Codex: `SCRIPT_ChatGPT.md` 기준 목차 포함 12장 Google Meet/Google 색 테마 덱과 재생성 스크립트 작성. 구조·발표자 노트·슬라이드 경계 확인, PowerPoint COM 접근 거부로 PNG 렌더링은 미확인. 다음: 사용자 자료 확인 후 화면 캡처가 있으면 슬라이드 4 갱신; 추가 편집 Codex gpt-6-luna·medium(Fast). 위험: 시각적 최종 확인 미완료.
@@ -50,6 +51,7 @@
 - 2026-10-16 밤 Claude: PR #9 merge commit 병합 확인(부모 `dd427bc`·`811c975`), main에서 T1·T3b·T4·T8b 모두 포함. main pytest 197 passed, `T8b_10014.patch`는 `3730af1`로 이미 적용. 다음: 사용자 W3 S0 → diag_eval은 Codex luna·medium. 위험: 10014가 패치 후에도 남음(test_ws 10회 중 1회 실패), tshark/Live 실측 미확인.
 
 ## 사용자에게 (걸림돌·제안·모호한 점. 답 받으면 지우고 결정은 PROGRESS "결정 사항"으로)
+- T13: `uv run --no-sync pytest tests/ -q`는 실행 전 차단. 기본 uv cache 생성 오류 후 작업 폴더의 `UV_CACHE_DIR`로 재시도했으나, 가상환경 기반 `Python313/python.exe` 접근 거부 및 `uv/python/.lock` 접근 거부. 정상 Python 환경에서 전체 테스트 재실행 필요(새 의존성·네트워크 사용 없음).
 - Codex sandbox가 `.git/refs` 쓰기·`.venv` Python 실행을 거부한다(Claude가 대신 적용해 해결) → Codex 권한 설정 확인 필요.
 **다음 세션 순서 (10/16 작성, 10/16 밤 병합 후 정리. 각 단계 시작 전: 이 HANDOFF "현재 상태" + PROJECT_SPEC 해당 절 확인 → 계획 → 실행)**
 - S6 [사용자] 팀원에게 v1.2 질문 Q1–Q9 전달 / W3 전 사전 점검 S0 (`w3_collection.md` §0, 특히 S0-1)
