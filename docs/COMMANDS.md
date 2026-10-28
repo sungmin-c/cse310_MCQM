@@ -33,7 +33,12 @@
 | 목적 | 명령 | 결과 위치 |
 |---|---|---|
 | 실시간 캡처 (기존 CLI 유지, 구현·서버 import: `capture.tshark_live`) | `uv run --with psutil python scripts/pilot_live.py capture --name p1_meet1 --iface Wi-Fi --duration 200` (`--no-os`면 `--with psutil` 생략 가능) | `data/pilot/<name>_{pkts,est,os}.csv` (`--no-os`면 os 제외) |
-| 모니터 on/off 비교 | `uv run --with psutil python scripts/overhead_ab.py --name p3_meet1 --dst <노트북IP>` | `data/pilot/<name>_os.csv`, `_phase.csv`, `_onK_*.csv` |
+| 모니터 on/off 비교 | `uv run --with psutil python scripts/overhead_ab.py --name p3_meet1 --dst <노트북IP>` | `data/pilot/<name>_os.csv`, `_phase.csv`, `_mem.csv`(가용 MB·Chrome/모니터 RSS·모니터 CPU), `_onK_*.csv` |
+| P5 구성요소 분해 (E1) | `uv run --with psutil --with websockets python scripts/overhead_ab.py --name p5_e1 --dst <노트북IP> --modes off,capture,server,widget --step 60 --pairs 3` | 단계 종류: off·on·capture·server·widget·os. 바퀴마다 시작 단계를 돌림. 경량: `--snaplen 96 --every 5`, 같은 코어 경쟁: `--pin-monitor 2` |
+| P5 RAM 압박 (E4) | `uv run --with psutil python scripts/mem_hog.py --avail-mb 500` | 별도 터미널, Ctrl+C로 해제 |
+| P5 위젯 대역 | Chrome에서 `scripts/widget_proxy.html` 열기 → [PiP 열기] | 포트 8001에 자동 연결(`--modes widget`일 때 서버가 뜸) |
+| P5 시스템 카운터 | `typeperf "\Processor(_Total)\% Processor Time" "\Memory\Available MBytes" "\Memory\Pages/sec" "\GPU Engine(*engtype_3D)\Utilization Percentage" -si 1 -o data\pilot\<name>_perf.csv` | 블록마다 따로 실행, 끝나면 Ctrl+C |
+| P5 집계 | `uv run --with psutil python scripts/overhead_report.py --name p5_e1 --dump <dump.json>` | 단계별 표 + 통과 기준 PASS/FAIL (`overhead_weekend.md` §3) |
 | CPU 부하 (캡처와 별도 실행) | `uv run python scripts/cpu_load.py --name p2_meet1 --levels 0,50,80,100 --step 60` | `data/pilot/<name>_load.csv` |
 | 원인 진단 합성 실험 (IP/UDP만) | `uv run python scripts/diag_synth.py --vca meet --split test` | `data/diag/summary_*.json`, `windows_*.csv` |
 | 원인 진단 합성 실험 (RTP 순번 포함) | 위 명령 + `--rtp` | 같은 곳 (`_rtp` 접미사) |

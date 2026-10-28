@@ -1,5 +1,5 @@
 # Codex 구현 -> Claude 리뷰 -> Codex 수정 자동 루프 (격리된 git worktree에서만 동작)
-# 실행 (repo 루트):  pwsh scripts/ai_loop.ps1 -Id T1 -Branch ml/t1-tshark-live -Brief docs/briefs/T1.md
+# 실행 (repo 루트):  pwsh scripts/ai_loop.ps1 -Id T1 -Branch ml/t1-tshark-live -Brief docs/briefs/T1.md [-Base main]
 # 안전: main/원본 작업 폴더는 건드리지 않는다. push 안 함. 결과 확인 후 병합은 사람이 한다.
 # 되돌리기: git worktree remove --force ../mcqm-wt-<Id> ; git branch -D <Branch>
 param(
@@ -7,6 +7,7 @@ param(
   [Parameter(Mandatory)][string]$Branch,
   [Parameter(Mandatory)][string]$Brief,
   [int]$Rounds = 3,
+  [string]$Base = 'main',          # worktree를 만들 기준 브랜치·커밋 (아직 main에 없는 커밋 위에서 작업할 때)
   [string]$ImplModel = 'gpt-6.1-sol', [string]$ImplEffort = 'high',
   [string]$ReviewModel = 'opus', [string]$ReviewEffort = 'high'
 )
@@ -17,13 +18,13 @@ $log  = Join-Path $main "data/ai_runs/$Id"          # data/ 는 git 제외
 New-Item -ItemType Directory -Force $log | Out-Null
 
 if (-not (Test-Path $wt)) {
-  git worktree add $wt -b $Branch main | Out-Null
+  git worktree add $wt -b $Branch $Base | Out-Null
   # data/ 는 git 제외라 worktree에 없다. 모델 pkl만 복사 (junction 만들지 않음: 삭제 사고 방지)
   New-Item -ItemType Directory -Force "$wt/data/models" | Out-Null
   Copy-Item "$main/data/models/*" "$wt/data/models/"
   # 아직 main에 없는 에이전트 문맥 파일을 가져와 별도 커밋으로 둔다 (리뷰 diff 기준점)
   foreach ($f in 'AGENTS.md', '.claude/CLAUDE.md', 'docs/HANDOFF.md', 'docs/briefs', 'docs/design') {
-    Copy-Item "$main/$f" "$wt/$f" -Recurse -Force
+    Copy-Item "$main/$f" (Split-Path "$wt/$f") -Recurse -Force   # 부모로 복사: 대상 폴더가 있으면 안에 중첩되는 것 방지
   }
   git -C $wt add -A; git -C $wt commit -q -m "ctx($Id): agent docs"
 }

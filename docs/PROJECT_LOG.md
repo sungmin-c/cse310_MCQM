@@ -3,9 +3,10 @@
 기준일: 2026-10-15. 상세 수치와 한계는 `docs/PROGRESS.md`, 방향과 설계는 `docs/PROJECT_SPEC.md`.
 
 **프로젝트가 풀려는 질문 3가지:** 아래 "목적"은 이 질문 중 어디에 쓰이는지를 뜻한다.
-- **Q1.** 패킷 헤더만으로 Windows에서 Meet·Zoom의 fps 같은 품질을 실시간으로 얼마나 정확히 추정할 수 있는가?
+- **Q1.** 패킷 헤더만으로 Windows에서 Meet·Teams·Zoom의 fps 같은 품질을 실시간으로 얼마나 정확히 추정할 수 있는가?
 - **Q2.** 품질이 떨어졌을 때 원인이 네트워크인지 기기(CPU)인지 구분할 수 있는가?
 - **Q3.** 우리 모니터 자체가 통화에 부담을 주는가?
+- **Q4.** (v7) 조치 뒤 품질 회복을 얼마나 빨리, 정확히 판정하는가?
 
 ## 1단계: 기반 만들기와 재현 (10/12–10/13)
 | # | 구분 | 한 일 | 목적 | 결과 |
@@ -25,7 +26,7 @@
 | 9 | 테스트 | 핫스팟 기준 측정, Clumsy 적용 (M0-6, M0-7) | 폰 트래픽에 손상을 걸 수 있는지 | **Clumsy는 핫스팟 전달 트래픽에 적용되지 않았음** |
 | 10 | 테스트 | scrcpy, gnirehtet | 폰 화면 확인, 대안 경로 | USB 연결이 끊겨 **보류·중단** |
 | 11 | 개발+테스트 | Flutter 오버레이 스파이크 (M0-a) | Android에서 말풍선, WebSocket, 패널, RSSI가 되는지 | S20에서 동작. **이후 Android 설계의 실측 근거로 보관** (브랜치 `ml/overlay-spike`) |
-| 12 | 결정 | v5 방향 재설정 + OVERVIEW 문서 | 모바일에서 무엇을 측정해야 타당한지 정리 | 10/14 면담으로 v6로 대체 |
+| 12 | 결정 | v5 방향 재설정 + OVERVIEW 문서 | 모바일에서 무엇을 측정해야 타당한지 정리 | 10/14 면담으로 v6로 대체. OVERVIEW(`PROJECT_OVERVIEW_KO.md`)는 10/22 삭제(git 이력에 있음) |
 
 ## 3단계: v6 전환 (10/14)
 | # | 구분 | 한 일 | 목적 | 결과 |
@@ -63,6 +64,21 @@
 | 31 | 구현 | T4 WS 서버(`431faef`) + T8b ③ tick 연결(`6cfaf2c`): device·flow가 Diagnoser로 | **Q2:** 패킷만 vs 패킷+OS를 `--schema v1.2`·`--os` 유무로 재생 비교 가능 | Claude 리뷰로 T4 결함 2건 수정(종료 시 예외 미처리, Live tshark `rtp_udp` 누락). 176 passed+1 skipped. Live·실통화 미확인 |
 | 32 | 병합 | PR #9 merge commit(`9655017`)로 T1·T3b·T4·T8b를 main에 병합, #6~#8 close | 다음 단계(W3 S0)를 main에서 시작 | main pytest 197 passed. WinError 10014는 `3730af1` 재시도 후에도 test_ws 반복 중 가끔 실패(환경 문제, 원인 미확인) |
 
+작업 브리프(Codex 지시서, 10/22 삭제 — git 이력에 있음): **T1** pilot_live 캡처를 `capture/tshark_live.py`로 분리, 라인 스트림 처리 함수와 테스트 / **T3b** `docs/design/judge.md`대로 `server/judge.py` 구현 / **T4** FastAPI WS(Live·Replay, `docs/design/ws_protocol.md`) / **T8b** diagnosis v1 3단계(`call_core_pct` → `Diagnoser` v1·`diag_eval.py` → tick 연결). 모두 PR #9로 병합.
+
+## 7단계: v7 범위 보강 (10/22)
+| # | 구분 | 한 일 | 목적 | 결과 |
+|---|---|---|---|---|
+| 33 | 결정 | 측정 순서 Meet → Teams(Chrome 웹) → Zoom, 통화 30/15/15 | vcaml이 Teams를 다뤄 선행 모델이 있음. Zoom은 정답이 근사값이라 마지막 | PROGRESS Q22. Teams 정답 경로는 W2 파일럿으로 확인 |
+| 34 | 결정 | 조치 안내 + 회복 검증, 미니 위젯(Document PiP) 추가 | **Q4**: 진단 다음 단계(무엇을 하면 되는지, 됐는지)까지 보이려고 | PROGRESS Q23, SPEC v7 §5-1. 조치=주입 해제라 "회복 판정 지연·정확도"로 평가 |
+| 35 | 문서 | SPEC v7, PROGRESS·HANDOFF·design·README·AGENTS 갱신, OVERVIEW·briefs 삭제, Proposal 발표 자료(`docs/proposal/`) | 모든 문서를 v7 기준으로 맞춤 | 완료 (커밋 전) |
+| 36 | 문서 (10/25) | `PROPOSAL_DECK.md` v2: 6단 구성(vcaml → 업계 제품 한계 → vcaml로 가능한 것 → 우리 프로젝트 → 계획·파일럿 → 최종 데모), 11장 약 8분 30초. `PROJECT_OVERVIEW_{KO,EN}.md` 신규(다른 AI 전달용) | 발표 서사에 "기존 산업 대비 차별점" 추가 | 업계 비교는 공식·벤더 문서 검색만(제품 직접 시험 안 함), 출처는 DECK 하단. `gamma_input.md`는 아직 v1 구성 |
+
+## 8단계: v8 범위 축소 (10/28)
+| # | 종류 | 한 일 | 왜 | 결과 |
+|---|---|---|---|---|
+| 37 | 결정+문서 | **Zoom 제외, Meet≈30 + Teams≈15**, 측정은 Windows 노트북 + Chrome 웹만. SPEC v8, w3_collection §8(T9 파일럿)·§9(Teams 15통화), PROGRESS·HANDOFF·README·AGENTS 갱신, 교수님 설명 메모 `docs/SCOPE_CHANGE_v8.md` | 2인 팀·남은 5주. Zoom은 정답이 근사값·RTP 접근 미확인으로 위험이 가장 큼 | PROGRESS Q25. 코드의 `zoom` 선택지는 그대로(범위 밖) |
+
 ## 지금까지의 결론 3가지
 1. **Q1:** 논문 모델을 그대로 쓰면 실제 Windows 통화에서는 맞지 않는다. 직접 수집한 데이터로 재학습해야 한다.
 2. **Q2:** 패킷만으로는 기기 원인이 보이지 않지만, OS 지표(CPU, 디코드 시간)를 더하면 구분할 신호가 있다.
@@ -73,7 +89,7 @@
 ## 남은 일
 - 정리 조사 결과 보고 후, 승인받은 것만 삭제
 - **W2:** 실시간 파이프라인과 SCHEMA v1.2 + device 필드
-- **W3–W4:** Meet 약 30통화와 Zoom 약 15통화 수집, 재학습, clumsy2 설치
-- **W5:** 평가
+- **W3–W4 (v8):** Meet 약 30통화 + Teams 파일럿(T9) → Teams 약 15통화, clumsy2 설치, 회복 판정 구현
+- **W5:** 재학습(Meet·Teams) + 평가 (정확도, 진단, 회복, 오버헤드)
 - **W6:** Android 설계 문서와 정리
 

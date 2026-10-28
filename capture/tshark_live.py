@@ -100,8 +100,25 @@ def parse(fields):
     return float(epoch), float(rel), dst, int(proto), float(ulen) if ulen and "," not in ulen else 0.0
 
 
+def tshark_cmd(iface, snaplen=0, duration=0):
+    """capture()와 서버 live가 같이 쓰는 tshark 명령. snaplen > 0이면 패킷 앞 N바이트만 잡는다.
+
+    vcaml 특징은 IP/UDP 헤더 길이만 쓰고 RTP 헤더는 앞 12바이트라, 96바이트면 14필드가 그대로 나온다.
+    """
+    # 1024-49152 밖 포트(P2P 흐름은 양쪽 모두 49152 초과일 수 있음, P2-1)는 휴리스틱으로 RTP를 해석한다
+    cmd = [tshark_path(), "-i", iface, "-p", "-f", "udp", "-l", "-n"]
+    if snaplen:
+        cmd += ["-s", str(snaplen)]
+    cmd += ["-d", "udp.port==1024-49152,rtp", "--enable-heuristic", "rtp_udp", "-T", "fields", "-E", "separator=/t"]
+    for fld in FIELDS:
+        cmd += ["-e", fld]
+    if duration:
+        cmd += ["-a", f"duration:{duration}"]
+    return cmd
+
+
 def process_lines(lines, models, emit, *, dst_ip=None, packet_writer=None, window_features=None,
-                  feature_emit=None):
+                  feature_emit=None, every=1):
     """tshark 탭 구분 라인 iterable을 처리하고 윈도우마다 emit(row)을 호출한다.
 
     row는 et, n_pkts, METRICS의 원시 예측값, tick_ms를 담는다 (CSV 반올림은 호출자 담당).
@@ -115,8 +132,14 @@ def process_lines(lines, models, emit, *, dst_ip=None, packet_writer=None, windo
         window_features = WindowFeatures(vca="meet", dst_ip=dst_ip)
 
     flows = {}
+    windows = 0
 
     def estimate(w):
+        nonlocal windows
+        windows += 1
+        if (windows - 1) % every:  # --every N: 캡처는 매 창 계속하고 모델 추론은 N창마다 한 번 (경량 모드)
+            flows.clear()
+            return
         t = time.perf_counter()
         pred = {m: float(est.predict(w[cols])[0]) for m, (est, cols) in models.items()}
         ms = (time.perf_counter() - t) * 1000
@@ -159,13 +182,7 @@ def capture(a):
     OUT.mkdir(parents=True, exist_ok=True)
     models = load_models()
     wf = WindowFeatures(vca="meet", dst_ip=a.dst)
-    # 1024-49152 밖 포트(P2P 흐름은 양쪽 모두 49152 초과일 수 있음, P2-1)는 휴리스틱으로 RTP를 해석한다
-    cmd = [tshark_path(), "-i", a.iface, "-p", "-f", "udp", "-l", "-n",
-           "-d", "udp.port==1024-49152,rtp", "--enable-heuristic", "rtp_udp", "-T", "fields", "-E", "separator=/t"]
-    for fld in FIELDS:
-        cmd += ["-e", fld]
-    if a.duration:
-        cmd += ["-a", f"duration:{a.duration}"]
+    cmd = tshark_cmd(a.iface, getattr(a, "snaplen", 0), a.duration)
     ts = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
     samp = None
     if not a.no_os:
@@ -188,7 +205,8 @@ def capture(a):
 
     print(f"capture → {OUT}/{a.name}_*.csv   (멈추기: Ctrl+C)", flush=True)
     try:
-        process_lines(ts.stdout, models, emit, packet_writer=pw, window_features=wf)
+        process_lines(ts.stdout, models, emit, packet_writer=pw, window_features=wf,
+                      every=getattr(a, "every", 1))
     except KeyboardInterrupt:
         pass
     finally:
