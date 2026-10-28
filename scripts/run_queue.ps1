@@ -9,7 +9,7 @@ $base = (git branch --show-current).Trim()            # 지금 브랜치 위에�
 
 # 이 프로세스가 도는 동안만 절전·화면 꺼짐 방지 (시스템 설정은 바꾸지 않는다. 프로세스가 끝나면 자동 해제)
 Add-Type -Namespace Win -Name Power -MemberDefinition '[DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint f);'
-[void][Win.Power]::SetThreadExecutionState(0x80000001)   # ES_CONTINUOUS | ES_SYSTEM_REQUIRED
+[void][Win.Power]::SetThreadExecutionState([uint32]2147483649)   # 0x80000001 = ES_CONTINUOUS | ES_SYSTEM_REQUIRED
 
 $queue = @(
   @{ Id = 'T9a'; Branch = 'ml/t9a-teams-app';   Brief = 'docs/briefs/T9a.md' },
