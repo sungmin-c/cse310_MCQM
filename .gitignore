@@ -18,3 +18,11 @@ __pycache__/
 # dashboard
 node_modules/
 dashboard/dist/
+
+# 발표 바이너리·보관·미발송 초안
+docs/proposal/*.pptx
+docs/proposal/*.pdf
+docs/proposal/presentation_*/
+docs/Estimating*.pdf
+overlay/
+docs/outbox/
