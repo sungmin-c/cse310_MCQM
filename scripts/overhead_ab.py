@@ -44,8 +44,9 @@ def sample_mem(path, stop, mon):
         while not stop.wait(1.0):
             call = 0
             for p in psutil.process_iter(["name", "memory_info"]):
-                if (p.info["name"] or "").lower() in CALL_PROCS and p.info["memory_info"]:
-                    call += p.info["memory_info"].rss
+                mi = p.info.get("memory_info")
+                if (p.info.get("name") or "").lower() in CALL_PROCS and mi:
+                    call += mi.rss
             monitor = mcpu = 0
             if mon["proc"] is not None and mon["proc"].poll() is None:
                 try:
