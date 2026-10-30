@@ -19,14 +19,20 @@
 | Q11 | 방향 재설정 (10/13) | 비판적 분석 후 승인: **방향 1(모바일 측정 타당성 검증) + 방향 3 축소(손실·대역폭 원인)**. 방향 2(화면 기반 정답)는 **하루 파일럿**. 0–100 QoE 점수는 **지표별 판정**으로 대체(SCHEMA v1.2 초안). 라이브 데모는 Meet·Kakao 둘 다. 대시보드=팀원(주 3시간, 최소 범위), 버블 UI=Sungmin. Zoom 제외. 루팅 기기 없음 | ✅ |
 | Q12 | SCHEMA v1.2 (지표별 판정) | 초안 작성. **팀원 확인 대기** (v1.1과 함께 M1 10/26까지 확정) | ⏳ |
 | Q13 | 방향 재설정 v6 (10/14) | 교수님 면담: **데스크톱(Windows) 우선**, 12/2 = 데스크톱 MVP 구현·검증, Android는 설계·실현 가능성 분석까지(구현 없음), 대상 Meet·Zoom. v5 모바일 작업은 설계 근거로 보관. 계획 승인됨 | ✅ |
-| Q14 | 통화 상대 기기 | **S20 단독**(Meet·Zoom 앱, 거치대 고정 [가정]). 안 되면 팀원 노트북과 서로 측정(나중) | ✅ |
-| Q15 | Zoom 정답 | 학생 계정(요금제 미확인, QoS API는 Business 이상 필요). **화면 기반 fps**로 간다. 파일럿 P4에서 가능 여부 확인 | ✅(검증 대기) |
+| Q14 | 통화 상대 기기 | **S20 단독**(v8: Meet·Teams 앱, 거치대 고정 [가정]). 안 되면 팀원 노트북과 서로 측정(나중) | ✅ |
+| Q15 | Zoom 정답 | 학생 계정(요금제 미확인, QoS API는 Business 이상 필요). **화면 기반 fps**로 간다. 파일럿 P4에서 가능 여부 확인 | ⏸ v8 제외(Q25) |
 | Q16 | 대역폭 제한 도구 | **clumsy2 설치 승인**. 설치는 W3 직전, 되돌리는 방법 함께 기록. 동작 미확인 | ✅(설치 대기) |
 | Q17 | 브랜치 정리 | `ml/m2-core`(PR #1) merge, `ml/overlay-spike`는 브랜치만 보존(PR 없음). 실행 직전 PR 상태 확인 | ⏳ 실행 대기 |
 | Q19 | WS 서버 계약 (10/16, Claude 설계 `docs/design/ws_protocol.md`) | server→client는 tick 한 종류, 서버 1개 = 입력 1개(Live 또는 Replay), 오류·종료는 close code. 기본 출력은 v1 그대로, v1.2 제안 필드는 `--schema v1.2`일 때만. `qoe`는 judge 등급에서 파생한 호환값 [가정]. tick `validated`는 SCHEMA대로 truth 유무 (judge.py의 `validated`는 쓰지 않음). 이유: 계약 테스트가 키를 정확히 비교해 새 메시지·필드가 v1 소비자를 깰 수 있음 | ✅(팀원 확인은 v1.2와 함께) |
 | Q20 | W3 수집 사전 점검 (10/16) | 본 수집 전 S0-1: Clumsy가 버린 수신 패킷이 tshark에 보이는지 확인. [추정] Npcap이 WinDivert보다 아래에서 잡아 손실이 캡처에 안 보일 수 있음 → 실패 시 loss·bandwidth 조건 보류 (`docs/design/w3_collection.md`) | ⏳ 실측 대기 |
 | Q21 | diagnosis v1 `device_cpu` (10/16, Claude 설계 `docs/design/diagnosis_v1.md`) | 입력은 affinity 코어 사용률 `call_core_pct`(코어 고정 시 전체 CPU%는 23%로 포화를 못 보임, P2-2), 임계값 85% [가정] → W3 dev 조정. 직접 관측 패킷 신호(bandwidth·RTP loss·jitter) 다음, IP/UDP 손실 규칙 앞. 흐름 전환 시 기준선 재수집. 구현 순서: `call_core_pct` 수집을 W3 전에 먼저(T8b 1단계). tshark RTP 휴리스틱 추가(`31243bf`)는 W3 S0-3에서 검증 | ✅(실측 대기) |
-| Q18 | H4 / 팀원 범위 / 웹 중심 | H4 = 노트북 상주 서비스 + 입력 모듈로 확정. 대시보드 필수 = 원인·근거·CPU 카드(What-if 슬라이더는 선택), 팀원 동의함. **최종 화면은 웹 대시보드, 네이티브 앱 없음** | ✅ |
+| Q18 | H4 / 팀원 범위 / 웹 중심 | H4 = 노트북 상주 서비스 + 입력 모듈로 확정. 대시보드 필수 = 원인·근거·CPU 카드(What-if 슬라이더는 선택), 팀원 동의함. **최종 화면은 웹 대시보드, 네이티브 앱 없음** (v7: 미니 위젯도 대시보드 PiP라 원칙 유지) | ✅ |
+| Q22 | 측정 대상·순서 (10/22) | **Meet → Teams → Zoom.** vcaml이 Meet·Teams·Webex를 다뤘으므로 Teams는 선행 모델·in-lab 데이터가 있다. Teams 정답은 **Chrome 웹 클라이언트 + webrtc-internals** [가정, W2 파일럿으로 확인]. 통화 수 Meet 30 / Teams 15 / Zoom 15, 부족하면 Zoom부터 축소. **→ v8(10/28, Q25)로 대체: Zoom 제외, Meet 30 / Teams 15** | ✅ Q25로 갱신 (Teams 검증 대기, T9) |
+| Q23 | 범위 v7 (10/22) | **조치 안내 + 조치 후 회복 검증**, **미니 위젯** 추가. 위젯 = 대시보드를 Chrome Document PiP로 띄운 항상-위 창(새 앱 없음, 팀원). 조치는 안내형, 실행은 사용자(자동 복구 제외 유지). 실험에서 조치 = 주입 해제이므로 회복 검증은 "회복 판정의 지연·정확도"로 보고. 근거·설계는 SPEC v7 §5-1, 상세 설계는 `docs/design/recovery.md`(T10, 10/28: N=5·T=30 [가정], 팀원 Q10–Q15 대기, 구현 W4). T10 r4: ref 상한 fair·경량 모드 회복 판정 끔·해제 시각 C는 _load.csv, L·B는 ms 기록(A안) | ✅(설계 완료, 팀원 확인 대기) |
+| Q24 | 발표 스크립트 정리 (10/25) | `docs/proposal/SCRIPT_ChatGPT.md` 수정: 의의 4가지를 "측정과 검증 연구"로 재구성(Slide 6), "accuracy"는 "정답 대비 추정 오차"로 통일(Slide 6·9), Slide 5에 "추정이 통화를 따라간다" 한 줄, "for any app" 삭제, 결론에 "다른 암호화 서비스로의 확장은 방향일 뿐" 추가, 맨 끝에 Q&A 절(Q0–Q7). SPEC §3-4 지표에 frame jitter 포함, §3-9 한계에 표본 산정 근거 없음·일반화 미시험, §3-10 프로젝트 성격 추가. **이유**: 벤더도 앱 안에서 실시간 안내를 하므로 "업계에 없다"는 주장이 불가능하고, 정직한 의의는 측정·검증이다. 교수님 미팅 문서(`MEETING_1022.md`)는 반영하지 않음(삭제 가능 판단, 파일은 그대로) | ✅ |
+| Q25 | 범위 축소 v8 (10/28) | **Zoom 제외, 측정 앱 = Meet + Teams.** Webex는 넣지 않음(Teams가 v7 문서·발표 서사와 일치, 둘 다 Windows 웹 클라이언트 파일럿이 먼저 필요). 측정·캡처·주입은 전부 **Windows 노트북 + Chrome 웹**(Clumsy·WinDivert·코어 고정이 Windows 전용, OS와 앱이 같이 바뀌면 원인 분리 불가). 동료의 Mac은 대시보드(React) 개발용이라 측정과 무관. 통화 수 Meet≈30 / Teams≈15(부족하면 Teams부터 축소). **이유**: 2인 팀·남은 5주, Zoom은 정답이 근사값·RTP 접근 미확인이라 위험이 가장 큼. **반영 (10/28)**: SPEC v8, `w3_collection.md` §8 T9 파일럿·§9 Teams 15통화, M4·일정, HANDOFF·README·AGENTS, 교수님 설명 `docs/SCOPE_CHANGE_v8.md`(전달은 사용자). 발표 자료는 갱신하지 않음(사용자 결정) | ✅ 문서 반영 (교수님 전달 대기) |
+| Q26 | QoE 시뮬레이터 웹 (10/28) | **보류, 향후 과제.** 아이디어: 웹캠 loopback에서 fps·bitrate·해상도(`setParameters`, 실제 인코더 변화)와 jitter·멈춤(프레임 보류, 흉내)을 토글해 화면 변화를 보여 준다. vcaml 4개 지표를 역방향으로 보여 주는 설명 도구이고, judge 절대 임계값([가정])을 소규모 사용자 실험으로 정할 근거가 될 수 있다. localhost 트래픽이라 재학습 데이터로는 부적합. **보류 이유**: 모니터 자원 경쟁(오버헤드) 문제와 무관하고, 동결까지 4주에 대시보드·위젯·T9·W3 수집이 남아 있음 | ⏸ 보류 |
+| Q27 | 모니터 자원 경쟁 (10/28, 발표 후 질문) | **방향 유지, 오버헤드 실험 P5 추가.** 수동 캡처라 네트워크를 막지 않지만 CPU·RAM 경쟁은 0이 될 수 없다(단, CPU 부족 시 Chrome이 송신 fps·bitrate를 낮춰 상대 화질에 간접 영향). P3는 여유 CPU·위젯 없음·배터리·1통화라 포화 구간을 못 봤다 → `docs/design/overhead_weekend.md`(E1–E7, 통과 기준 고정). 경량화: snaplen·추론 간격·포화 시 OS 지표만. vcaml은 망 운영자용 수동 측정이라(논문 초록) 망 쪽 배치가 대안이나 기기 원인 진단을 잃고 손실 주입·정답과 맞지 않아 시연만. 앱 비교 벤치마크·타 팀 합류는 정답 부재·일정으로 기각 | ⬜ 준비 10/29–30, 실측 10/31–11/1 (T12) |
 
 ## 방향 재설정 v6 (10/14)
 - 근거: 교수님 면담 결과 + 4개 조사(R1 vcaml 논문, R2 데스크톱 정답·손상 도구, R3 Android 접근성, R4 선행 연구). 요지는 `docs/PROJECT_SPEC.md` v6.
@@ -34,19 +40,27 @@
 - 보관(개발 중단): `capture/pcapdroid_rx.py`, `overlay/`(브랜치 `ml/overlay-spike`), `data/m0/udp_run*`. 폐기: 핫스팟·Plan E·gnirehtet·scrcpy·Kakao 데모.
 - 알려진 위험: vcaml 모델이 Linux·에뮬레이션 학습이라 Windows 실환경 이전 오차가 클 수 있다(논문 Meet MAE 12.41, Table 5) → W1 P1에서 측정, 크면 재학습.
 
-## 일정 (발표 12/2, 동결 11/24) — v6
+## 방향 보강 v7 (10/22)
+- 측정 순서 Meet → Teams → Zoom(Q22), 조치 안내·회복 검증과 미니 위젯(Q23). v6의 데스크톱 우선·Android 설계만은 그대로.
+- 새 위험: Teams 웹 정답 경로 미확인, PiP가 통화 창 위에 계속 뜨는지 미확인, 팀원 작업량 증가(위젯), 수집 통화 45 → 60.
+
+## 범위 축소 v8 (10/28)
+- **Zoom 제외, 측정 앱 = Meet + Teams**, 측정은 Windows 노트북 + Chrome 웹만(Q25). 통화 60 → 45. Teams 절차는 `docs/design/w3_collection.md` §8(T9)·§9.
+- 남은 위험: Teams 웹 정답(T9 미실시). T9 실패 시 Teams는 추정만 `validated:false`, 진단 평가에만 쓴다.
+
+## 일정 (발표 12/2, 동결 11/24) — v8 (W1·W2 행은 당시 기록 그대로)
 | 주 | 기간 | 외부 일정 | 마감 | 나 — Python·실험 | 팀원 — Web | 상태 |
 |---|---|---|---|---|---|---|
 | **W1 파일럿** | 10/14–10/19 | | | 문서 v6. **P1** Meet 1통화 tshark 실시간 → 기존 모델 → 정답(webrtc dump) MAE. **P2** CPU 부하 3단계: "패킷 정상, fps 하락" 확인. **P3** H1 모니터 on/off. **P4** Zoom 정답(화면 녹화 fps, Statistics 창 내보내기 여부) | SCHEMA v1.2 + device 리뷰, `dashboard/` scaffold | 🟡 ✅ P1–P4 완료(아래 "W1 파일럿 결과") |
-| W2 | 10/20–10/26 | **Midterm 1 (10/21)** | | `capture/tshark_live.py`, `judge.py`, FastAPI WS(Live·Replay), psutil 수집기 | WS 클라이언트, `parseMessage`+Vitest, 판정 배지, 차트 | ⬜ |
-| W3 | 10/27–11/2 | | | Meet ≈30통화 수집(조건표), clumsy2 설치·확정 | 추정·정답 겹침 차트 | ⬜ |
-| W4 | 11/3–11/9 | | | Zoom ≈15통화, `diagnosis.py` v1(`device_cpu`) | 원인·근거 카드, CPU 게이지 | ⬜ |
-| W5 | 11/10–11/16 | | | 평가: MAE, confusion matrix, H1 표 | 결과 화면 | ⬜ |
+| W2 | 10/20–10/26 | **Midterm 1 (10/21)**, Proposal 발표 | | ✅ `capture/tshark_live.py`, `judge.py`, FastAPI WS, 진단 v1(PR #9). 남은 것: W3 S0 사전 점검, **Teams 파일럿 1건**, 조치·회복 설계(T10) | WS 클라이언트, `parseMessage`+Vitest, 판정 배지, **위젯 PiP 스파이크** | 🟡 |
+| W3 | 10/27–11/2 | | | S0 사전 점검, Meet ≈30통화 수집(조건표, recovery 구간 포함), clumsy2 확정, **Teams 파일럿 T9**(W2에서 이월, W4 전 필수) | 추정·정답 겹침 차트 | ⬜ |
+| W4 | 11/3–11/9 | | | Teams ≈15통화(`w3_collection.md` §9), 회복 판정 구현 | 원인·근거·조치 카드, CPU 게이지, 위젯 | ⬜ |
+| W5 | 11/10–11/16 | | | 재학습(Meet·Teams, 통화 단위 분리) + 평가: MAE(재학습 전후), confusion matrix, 회복 지연, 오버헤드 표 | 결과 화면, 회복 표시 | ⬜ |
 | W6 | 11/17–11/23 | | **Freeze 11/24** | Android 4계층 설계 문서, README, 정적 데모·녹화본 | 다듬기, 접근성 | ⬜ |
 | W7 | 11/24–12/1 | **Midterm 2 (11/25)** | **Final Demo 12/2** | 리허설 2회(Replay 전환 점검), 발표 | 리허설, 발표 | ⬜ |
 | W8 | 12/3–12/12 | 종료 12/12 | | 최종 보고서 초안(한국어, [가정] 12/12까지) | | ⬜ |
 
-일정 리스크: 통화 30–45건은 S20 단독이라 시간이 직접 든다(약 2.5–4시간 + 설정). W3–W4에 몰리므로 W2에서 자동화 스크립트를 먼저 만든다. 동결 다음 날이 Midterm 2이므로 M5 작업은 W6 안에 끝낸다.
+일정 리스크: 통화 약 45건(Meet 30·Teams 15) + T9 파일럿은 S20 단독이라 시간이 직접 든다(통화당 10–11분 → Meet 약 5.5시간 + Teams 약 2.8시간 + 설정). W3–W4에 몰리므로 부족하면 Teams부터 줄인다(15 → 8 → 0, `w3_collection.md` §9). 동결 다음 날이 Midterm 2이므로 M5 작업은 W6 안에 끝낸다.
 
 v5 모바일 일정(E1 충실도, E2 정확도, E3 진단, Flutter 오버레이 마일스톤)은 git 이력(커밋 4bfda7b)에 있다.
 
@@ -191,8 +205,8 @@ v0의 Teams 실패 원인을 **Teams dev**에서 분석했다.
 - **발견 4 — 같은 규칙이 앱마다 다르게 듣는다.** 송신 패턴이 다르기 때문이다(Meet 약 30 pkt/s, Teams 약 270 pkt/s에 비트레이트 증가). 실제 Meet·Kakao 폰 통화에서도 앱별 임계값이 필요할 것으로 보인다 [가정]. 그래서 M4 Clumsy 실험을 dev와 test로 나눠 수집하는 것을 권장한다.
 - 원자료: v0 `data/diag/test/`, v0.1 `data/diag/v01_test/` (`summary_*.json`, `windows_*.csv`, git 제외).
 - 재현: `uv run python scripts/diag_synth.py --vca <vca> --split test --rtp`. 규칙만 바꿨다면 `--rescore data/diag/test/windows_<vca>_test_rtp.csv [--rtp] --out <폴더>`로 몇 초 만에 재채점할 수 있다.
-## M3 — (v6) 평가: 정답 대비 정확도 + 원인 진단 + 오버헤드 (마감 11/16, W5)
-## M4 — (v6) Meet·Zoom 수집(손실·대역폭·CPU 조건표) + device_cpu 진단 (마감 11/9, W3–W4)
+## M3 — (v8) 평가: 정답 대비 정확도(재학습 전후) + 원인 진단 + 회복 판정 + 오버헤드 (마감 11/16, W5)
+## M4 — (v8) Meet ≈30·Teams ≈15 수집(손실·대역폭·CPU 조건표, `w3_collection.md` §1·§9) + T9 Teams 파일럿 + device_cpu 진단 + 회복 판정 (마감 11/16, W3–W4, 재학습 W5)
 ## M5 = Freeze — 테스트, README, 정적 데모, 녹화본, 데모 스크립트 (마감 11/24)
 
 ## Flutter 오버레이 (v6: 보관 — 개발 중단, Android 설계의 실측 근거)

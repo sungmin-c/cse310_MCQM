@@ -24,7 +24,7 @@ if (-not (Test-Path $wt)) {
   Copy-Item "$main/data/models/*" "$wt/data/models/"
   # 아직 main에 없는 에이전트 문맥 파일을 가져와 별도 커밋으로 둔다 (리뷰 diff 기준점)
   foreach ($f in 'AGENTS.md', '.claude/CLAUDE.md', 'docs/HANDOFF.md', 'docs/briefs', 'docs/design') {
-    Copy-Item "$main/$f" "$wt/$f" -Recurse -Force
+    Copy-Item "$main/$f" (Split-Path "$wt/$f") -Recurse -Force   # 부모로 복사: 대상 폴더가 있으면 안에 중첩되는 것 방지
   }
   git -C $wt add -A; git -C $wt commit -q -m "ctx($Id): agent docs"
 }
