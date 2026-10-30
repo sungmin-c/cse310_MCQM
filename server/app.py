@@ -33,7 +33,7 @@ def parse_args(argv=None):
     source.add_argument("--replay")
     ap.add_argument("--iface", default="Wi-Fi")
     ap.add_argument("--dst")
-    ap.add_argument("--app", choices=("meet", "zoom"), default="meet")
+    ap.add_argument("--app", choices=("meet", "teams", "zoom"), default="meet")
     ap.add_argument("--truth")
     ap.add_argument("--os")
     ap.add_argument("--speed", type=float, default=1.0)

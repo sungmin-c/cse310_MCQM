@@ -7,7 +7,7 @@
 vcaml·ML 의존성이 없다. inline 의존성이라 `uv run`이 프로젝트와 격리된 환경에서 실행한다
 (Mac에서도 uv만 있으면 동작, submodule 불필요).
 
-실행: uv run server/dummy_stream.py [--app meet|kakao_video|kakao_voice|zoom] [--mode replay|live|whatif] [--port 8000]
+실행: uv run server/dummy_stream.py [--app meet|teams|kakao_video|kakao_voice|zoom] [--mode replay|live|whatif] [--port 8000]
 접속: ws://localhost:8000/ws  (경로는 보지 않으므로 /ws 외 경로도 동작)
 값은 60초 주기로 정상(0–14s) → 손상(15–44s, 30s에 최악) → 회복을 반복한다. QoE는 가짜 값이다.
 client→server control 메시지는 무시한다 (What-if 연결은 W5).
@@ -88,7 +88,7 @@ async def run(app: str, mode: str, port: int) -> None:
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument("--app", default="meet", choices=["meet", "kakao_video", "kakao_voice", "zoom"])
+    p.add_argument("--app", default="meet", choices=["meet", "teams", "kakao_video", "kakao_voice", "zoom"])
     p.add_argument("--mode", default="replay", choices=["replay", "live", "whatif"])
     p.add_argument("--port", type=int, default=8000)
     a = p.parse_args()

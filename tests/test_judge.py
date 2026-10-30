@@ -166,7 +166,7 @@ def test_invalid_inputs_are_unknown_even_after_valid_ticks(value):
 
 
 @pytest.mark.parametrize("vca, validated", [
-    ("meet", True), ("zoom", False), ("kakao", False),
+    ("meet", True), ("teams", False), ("zoom", False), ("kakao", False),
     ("kakao_video", False), ("kakao_voice", False),
 ])
 def test_validated_is_meet_only(vca, validated):
@@ -192,13 +192,15 @@ def test_baseline_length_must_be_positive(base_len):
         JudgeState(base_len=base_len)
 
 
-@pytest.mark.parametrize("app", ["meet", "kakao_video", "kakao_voice", "zoom"])
+@pytest.mark.parametrize("app", ["meet", "teams", "kakao_video", "kakao_voice", "zoom"])
 @pytest.mark.parametrize("mode", ["replay", "live", "whatif"])
 def test_synthetic_stream_replay_preserves_current_schema(app, mode):
     state = JudgeState()
     overall = set()
     for i in range(120):
         msg = json.loads(json.dumps(tick(i, app, mode, now=float(i))))
+        if app == "teams":
+            assert msg["app"] == "teams" and msg["truth"] is None and msg["validated"] is False
         est = msg["est"]
         result = judge({
             "fps": est["fps"],
