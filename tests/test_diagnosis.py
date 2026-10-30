@@ -127,3 +127,102 @@ def test_rtp_seq_loss_counts_gaps_and_wraps():
     assert s.take() == pytest.approx(0.0)
     s.push("A", 9)                            # 뒤바뀐(이전) 순번은 무시
     assert s.take() is None
+
+
+@pytest.mark.parametrize("device", [None, {}, {"cpu_pct": 100}, {"call_core_pct": None}])
+def test_missing_core_util_never_reports_device_cpu(device):
+    d = Diagnoser()
+    warm(d)
+    assert run(d, BASE, device=device)[0] == "none"
+    assert d.last_signals["call_core_pct"] is None
+
+
+@pytest.mark.parametrize("util, expected", [(84.9, "none"), (85.0, "device_cpu"), (95, "device_cpu"), (150, "device_cpu")])
+def test_device_cpu_threshold_and_confidence(util, expected):
+    d = Diagnoser()
+    warm(d)
+    cause, conf = run(d, BASE, device={"call_core_pct": util})
+    assert cause == expected and cause in CAUSES and 0 < conf <= 1
+    assert d.last_signals["call_core_pct"] == util
+
+
+@pytest.mark.parametrize("features, seq_loss, expected", [
+    (dict(BASE, l_num_bytes=9000, t_q1=45.0), None, "bandwidth"),
+    (BASE, 0.05, "loss"),
+    (dict(BASE, t_q1=2.0, t_std=25.0, t_max=150.0), None, "delay_jitter"),
+    (dict(BASE, t_std=20.0, t_max=100.0), None, "delay_jitter"),
+    (dict(BASE, l_num_bytes=17000, l_num_pkts=25), None, "device_cpu"),
+    (BASE, 0.0, "device_cpu"),
+])
+def test_device_cpu_rule_priority(features, seq_loss, expected):
+    d = Diagnoser()
+    warm(d)
+    assert run(d, features, seq_loss=seq_loss, device={"call_core_pct": 95})[0] == expected
+
+
+def test_single_device_cpu_spike_is_suppressed():
+    d = Diagnoser()
+    warm(d)
+    assert d.update(BASE, device={"call_core_pct": 95})[0] == "none"
+    assert d.update(BASE)[0] == "none"
+
+
+def test_healthy_cpu_windows_update_baseline():
+    d = Diagnoser()
+    warm(d)
+    high = dict(BASE, l_num_bytes=80000, l_num_pkts=120)
+    run(d, high, n=25, device={"call_core_pct": 95})
+    assert d.update(high)[0] == "none"
+    assert d.last_signals["r_bytes"] == 1.0
+    assert d.last_signals["r_pkts"] == 1.0
+
+
+@pytest.mark.parametrize("device", [None, {}, {"cpu_pct": 100}, {"call_core_pct": None}])
+def test_missing_core_util_suppresses_stale_cpu_votes(device):
+    d = Diagnoser()
+    warm(d)
+    assert run(d, BASE, device={"call_core_pct": 95})[0] == "device_cpu"
+    assert d.update(BASE, device=device)[0] == "none"
+
+
+def test_flow_change_restarts_skip_warmup_and_votes():
+    d = Diagnoser()
+    run(d, BASE, n=12, flow=("A", 1000))
+    assert run(d, BASE, flow=("A", 1000), seq_loss=0.05)[0] == "loss"
+    other = dict(BASE, l_num_bytes=48000, l_num_pkts=72, t_q1=8.0, t_std=25.0, t_max=120.0)
+    d.update(other, flow=("B", 2000))
+    assert d.update(other, flow=("B", 2000)) == ("none", 0.0)
+    assert d._base == [] and not d._recent and d.last_signals == {}
+    assert d._seen == 1
+    for _ in range(d.skip_first + d.warmup - 1):
+        assert d.update(other, flow=("B", 2000)) == ("none", 0.0)
+    assert run(d, other, n=5, flow=("B", 2000))[0] == "none"
+    assert d.last_signals["r_bytes"] == 1.0
+
+
+def test_single_flow_spike_keeps_baseline():
+    d = Diagnoser()
+    run(d, BASE, n=12, flow=("A", 1000))
+    d.update(BASE, flow=("B", 2000))
+    d.update(BASE, flow=("A", 1000))
+    assert d._seen == 14 and len(d._base) >= d.warmup
+    assert d._flow == ("A", 1000)
+
+
+def test_missing_flow_breaks_consecutive_change_detection():
+    d = Diagnoser()
+    run(d, BASE, n=12, flow=("A", 1000))
+    d.update(BASE, flow=("B", 2000))
+    d.update(BASE, flow=None)
+    d.update(BASE, flow=("B", 2000))
+    assert d._seen == 15 and d._flow == ("A", 1000)
+    assert d.update(BASE, flow=("B", 2000)) == ("none", 0.0)
+    assert d._flow == ("B", 2000)
+
+
+def test_distinct_flow_candidates_do_not_reset_baseline():
+    d = Diagnoser()
+    run(d, BASE, n=12, flow=("A", 1000))
+    d.update(BASE, flow=("B", 2000))
+    d.update(BASE, flow=("C", 3000))
+    assert d._seen == 14 and d._flow == ("A", 1000)

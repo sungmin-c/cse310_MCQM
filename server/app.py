@@ -57,7 +57,7 @@ def _metrics(row):
             "height": int(row["frameHeight"])}
 
 
-def build_tick(row, w, options, judge_state, diagnoser, threshold, truth=None, device=None):
+def build_tick(row, w, options, judge_state, diagnoser, threshold, truth=None, device=None, flow=None):
     if not all(math.isfinite(float(row[metric])) for metric in METRICS):
         raise ValueError("model returned nonfinite prediction")
     grades = judge(row, options.app, judge_state)
@@ -72,7 +72,7 @@ def build_tick(row, w, options, judge_state, diagnoser, threshold, truth=None, d
             "advice": None, "validated": not options.live and truth is not None}
     tick["est"]["fps"] = round(tick["est"]["fps"], 1)
     if options.schema == "v1.2":
-        cause, confidence = diagnoser.update(w, seq_loss=None)
+        cause, confidence = diagnoser.update(w, seq_loss=None, device=device, flow=flow)
         tick.update(judgement=judgement, device=device,
                     diagnosis={"cause": cause, "confidence": confidence})
     return tick
@@ -217,11 +217,17 @@ def create_app(options, models=None):
             os_rows, os_times = [], []
             if options.schema == "v1.2" and options.os:
                 with open(options.os, newline="", encoding="utf-8-sig") as f:
-                    samples = sorted(csv.DictReader(f), key=lambda r: float(r["ts"]))
+                    reader = csv.DictReader(f)
+                    if {"ts", "cpu_pct", "call_proc_cpu_pct", "mem_pct", "call_core_pct"}.issubset(
+                            reader.fieldnames or []):
+                        samples = sorted(reader, key=lambda r: float(r["ts"]))
+                    else:
+                        samples = []
                 for sample in samples:
                     values = {"cpu_pct": float(sample["cpu_pct"]),
                               "proc_cpu_pct": float(sample["call_proc_cpu_pct"]),
-                              "mem_pct": float(sample["mem_pct"])}
+                              "mem_pct": float(sample["mem_pct"]),
+                              "call_core_pct": float(sample["call_core_pct"])}
                     if all(math.isfinite(v) for v in values.values()):
                         os_times.append(float(sample["ts"]))
                         os_rows.append(values)
@@ -232,12 +238,14 @@ def create_app(options, models=None):
 
                 def sample_os():
                     sampler.ps.cpu_percent(None)
+                    sampler.ps.cpu_percent(None, percpu=True)
                     sampler._group_cpu()
                     while not stop.wait(1.0):
                         call, _ = sampler._group_cpu()
                         device = {"cpu_pct": sampler.ps.cpu_percent(None),
                                   "proc_cpu_pct": round(call, 1),
-                                  "mem_pct": sampler.ps.virtual_memory().percent}
+                                  "mem_pct": sampler.ps.virtual_memory().percent,
+                                  "call_core_pct": round(sampler.call_core_pct(), 1)}
                         live_samples.append((time.time(), device))
 
                 sample_thread = threading.Thread(target=sample_os, daemon=True)
@@ -245,7 +253,7 @@ def create_app(options, models=None):
             while not stop.is_set():
                 state, diagnoser = JudgeState(), Diagnoser()
 
-                def emit(row, features):
+                def emit(row, features, flow):
                     device = None
                     if options.live:
                         for timestamp, sample in reversed(list(live_samples)):
@@ -258,7 +266,7 @@ def create_app(options, models=None):
                         if index >= 0 and row["et"] - os_times[index] <= 2:
                             device = os_rows[index]
                     tick = build_tick(row, features.iloc[0], options, state, diagnoser,
-                                      app.state.threshold, truth_rows.get(row["et"]), device)
+                                      app.state.threshold, truth_rows.get(row["et"]), device, flow)
                     loop.call_soon_threadsafe(publish, tick)
 
                 source = live_lines() if options.live else replay_lines()

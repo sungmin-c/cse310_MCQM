@@ -1,6 +1,7 @@
 """tshark 실행·data/ 접근 없이 합성 라인으로 실시간 추정 경로를 검증한다."""
 import csv
 import io
+import sys
 from types import SimpleNamespace
 
 import pandas as pd
@@ -8,6 +9,58 @@ import pytest
 
 from capture.tshark_live import FIELDS, METRICS, parse, process_lines
 from capture import tshark_live
+
+
+@pytest.mark.parametrize("cores, expected", [({0, 1}, 100), (None, 55), (set(), 55)])
+def test_core_util(cores, expected):
+    assert tshark_live.core_util([100, 100, 10, 10], cores) == expected
+
+
+@pytest.mark.parametrize("affinities, expected", [
+    ([{0}, {1}], 100), ([{0, 1, 2, 3}], 55),
+    ([None, {0, 1}], 100), ([None, None], 55), ([], 55),
+])
+def test_os_sampler_records_call_core_pct(tmp_path, monkeypatch, affinities, expected):
+    class FakeProcess:
+        def __init__(self, pid, affinity):
+            self.pid, self.affinity = pid, affinity
+            self.info = {"name": "chrome.exe"}
+
+        def cpu_percent(self, interval):
+            return 20.0
+
+        def cpu_affinity(self):
+            if self.affinity is None:
+                raise RuntimeError("process unavailable")
+            return self.affinity
+
+    calls = []
+
+    def cpu_percent(interval, percpu=False):
+        calls.append(percpu)
+        return [100, 100, 10, 10] if percpu else 55.0
+
+    processes = [FakeProcess(i, affinity) for i, affinity in enumerate(affinities)]
+    fake_psutil = SimpleNamespace(
+        Error=RuntimeError, cpu_count=lambda: 4, cpu_percent=cpu_percent,
+        process_iter=lambda attrs: processes,
+        virtual_memory=lambda: SimpleNamespace(percent=40.0))
+    monkeypatch.setitem(sys.modules, "psutil", fake_psutil)
+    sampler = tshark_live.OsSampler(tmp_path / "os.csv", [])
+    waits = iter([False, True])
+    sampler.stop = SimpleNamespace(wait=lambda seconds: next(waits))
+
+    sampler.run()
+
+    with sampler.path.open(newline="") as f:
+        reader = csv.DictReader(f)
+        assert reader.fieldnames == ["ts", "cpu_pct", "call_proc_cpu_pct", "monitor_cpu_pct",
+                                    "mem_pct", "call_core_pct"]
+        rows = list(reader)
+    assert len(rows) == 1
+    assert rows[0]["call_core_pct"] == f"{expected:.1f}"
+    assert float(rows[0]["call_proc_cpu_pct"]) == 5 * len(processes)
+    assert calls == [False, True, False, True]
 
 
 def packet(rel=0.5, *, dst="A", proto="17", ulen="1000"):
@@ -109,11 +162,27 @@ def test_feature_callback_and_idle_flush_preserve_original_rows():
     emitted, features = [], []
     process_lines([line(0.5), None, None, line(3.5)], fake_models(["l_num_pkts"]),
                   emitted.append, dst_ip="A",
-                  feature_emit=lambda row, w: features.append((row, w)))
+                  feature_emit=lambda row, w, flow: features.append((row, w, flow)))
 
     assert [row["et"] for row in emitted] == [1000, 1003]
-    assert [row for row, _ in features] == emitted
-    assert [int(w["l_num_pkts"].iloc[0]) for _, w in features] == [1, 1]
+    assert [row for row, _, _ in features] == emitted
+    assert [int(w["l_num_pkts"].iloc[0]) for _, w, _ in features] == [1, 1]
+    assert [flow for _, _, flow in features] == [("sender", 5000), ("sender", 5000)]
+
+
+def test_feature_callback_selects_largest_source_port_flow_per_window():
+    lines = []
+    for rel, source, port in [(0.1, "A", "5000"), (0.2, "A", "5000"),
+                              (0.3, "B", "6000"), (1.5, "B", "6000")]:
+        fields = packet(rel)
+        fields[2], fields[6] = source, port
+        lines.append("\t".join(fields) + "\n")
+    features = []
+
+    process_lines(lines, fake_models(["l_num_pkts"]), lambda row: None, dst_ip="A",
+                  feature_emit=lambda row, w, flow: features.append(flow))
+
+    assert features == [("A", 5000), ("B", 6000)]
 
 
 def test_process_lines_keyboard_interrupt_flushes_once_with_ordered_features():

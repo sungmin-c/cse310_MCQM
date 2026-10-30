@@ -1,4 +1,4 @@
-"""원인 진단 v0 — 1초 feature를 통화 초반 기준선과 비교해 품질 저하 원인을 추정한다 (규칙 기반).
+"""원인 진단 v1 — 1초 feature와 OS 지표로 품질 저하 원인을 추정한다 (규칙 기반).
 
 출력 cause ∈ CAUSES, confidence ∈ [0, 1]. 트래픽 기반 '추정'이며 확정 진단이 아니다.
 
@@ -21,7 +21,7 @@ from collections import Counter, deque
 
 import numpy as np
 
-CAUSES = ["bandwidth", "delay_jitter", "loss", "weak_wifi", "none"]
+CAUSES = ["bandwidth", "delay_jitter", "loss", "weak_wifi", "device_cpu", "none"]
 
 
 class Diagnoser:
@@ -35,13 +35,31 @@ class Diagnoser:
         self._base = []
         self._recent = deque(maxlen=vote)   # 최근 원시 판정 (다수결로 1초 잡음 억제)
         self.last_signals = {}
+        self._flow = None
+        self._pending_flow = None
 
-    def update(self, f, rssi_dbm=None, seq_loss=None):
+    def update(self, f, rssi_dbm=None, seq_loss=None, device=None, flow=None):
         """f: feature 1행(dict-like: l_num_bytes, l_num_pkts, t_q1, t_q2, t_std, t_max …).
 
         rssi_dbm: 오버레이 앱이 보낸 Wi-Fi 신호 세기 (없으면 None → weak_wifi 판정 안 함)
         seq_loss: RTP 순번 기반 손실률 (RTP를 볼 수 없으면 None → IP/UDP 규칙으로 손실 추정)
+        device: 최근 OS 지표(dict), 없으면 CPU 판정 안 함
+        flow: 수신 영상 주 흐름 (ip.src, udp.srcport), 없으면 전환 감지 안 함
         """
+        if flow is None:
+            self._pending_flow = None
+        elif self._flow is None or flow == self._flow:
+            self._flow = flow
+            self._pending_flow = None
+        elif flow == self._pending_flow:
+            self._flow = flow
+            self._pending_flow = None
+            self._seen = 0
+            self._base.clear()
+            self._recent.clear()
+            self.last_signals = {}
+        else:
+            self._pending_flow = flow
         self._seen += 1
         x = {k: float(f[k]) for k in ("l_num_bytes", "l_num_pkts", "t_q1", "t_q2", "t_std", "t_max")}
         if self._seen <= self.skip_first:
@@ -60,15 +78,16 @@ class Diagnoser:
             "r_std": x["t_std"] / max(b["t_std"], 0.1),
             "d_max": x["t_max"] - b["t_max"],
             "seq_loss": seq_loss,
+            "call_core_pct": device.get("call_core_pct") if device is not None else None,
         }
         raw, strength = self._rules(s, rssi_dbm)
-        if raw == "none" and self._healthy(s):
+        if raw in ("none", "device_cpu") and self._healthy(s):
             # 손상 구간이 기준선에 섞이면 비율이 1로 수렴해 진단이 꺼진다 → 정상 범위 윈도우만 반영
             self._base = (self._base + [x])[-self.base_len:]
         self._recent.append((raw, strength))
         votes = Counter(c for c, _ in self._recent)
         cause, n = votes.most_common(1)[0]
-        if cause == "none" or n < 2:
+        if cause == "none" or n < 2 or (cause == "device_cpu" and s["call_core_pct"] is None):
             return "none", round(votes["none"] / len(self._recent), 2)
         # 신뢰도 = 다수결 비율 × 해당 원인 규칙 강도 평균
         mean_strength = np.mean([st for c, st in self._recent if c == cause])
@@ -98,6 +117,8 @@ class Diagnoser:
             return "loss", min(1.0, 0.5 + s["seq_loss"] * 5)
         if s["r_std"] >= 1.8 and s["d_max"] >= 30:
             return "delay_jitter", min(1.0, (s["r_std"] - 1) / 1.5)
+        if s["call_core_pct"] is not None and s["call_core_pct"] >= 85:
+            return "device_cpu", min(1.0, 0.5 + (s["call_core_pct"] - 85) / 30)
         if s["seq_loss"] is not None:                     # RTP 순번이 보이고 빈칸이 없으면 손실 아님
             return "none", 1.0
         if s["d_q1"] > -3 and (s["r_pkts"] <= 0.9 or (s["d_max"] >= 20 and s["r_std"] >= 1.1)):
