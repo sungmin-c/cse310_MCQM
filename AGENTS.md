@@ -1,7 +1,7 @@
 # AGENTS.md — cse310_MCQM (Claude·Codex 공통. .claude/CLAUDE.md가 이 파일을 import한다 — 규칙은 여기서만 고친다)
 
 ## 목표
-Windows 노트북의 화상통화(Meet → Teams, 둘 다 Chrome 웹. Zoom은 v8에서 제외) 패킷으로 fps·bitrate·해상도를 실시간 추정하고, 품질 저하 원인(네트워크 vs 기기 CPU)을 진단하고, 안내한 조치 뒤 회복을 판정한다. 최종 화면은 웹 대시보드 + 미니 위젯(대시보드의 Document PiP).
+Windows 노트북의 화상통화(Meet/Zoom) 패킷으로 fps·bitrate·해상도를 실시간 추정하고, 품질 저하 원인(네트워크 vs 기기 CPU)을 진단한다. 최종 화면은 웹 대시보드.
 
 ## 읽을 곳 (필요한 절만)
 명세 docs/PROJECT_SPEC.md · 일정·결과 docs/PROGRESS.md · 이력 docs/PROJECT_LOG.md · 계약 docs/SCHEMA.md + docs/schema/sample.jsonl · 명령 docs/COMMANDS.md · **인계판 docs/HANDOFF.md** · 개인 경로 CLAUDE.local.md(git 제외, 읽기 전용 참고)
@@ -25,7 +25,7 @@ Windows 노트북의 화상통화(Meet → Teams, 둘 다 Chrome 웹. Zoom은 v8
 - pcap·모델 등 대용량은 data/에 두고 git 제외. 시스템 변경 코드는 되돌리는 방법을 docs/COMMANDS.md에 같이 기록
 
 ## 도메인
-- 정답 경로 확인(T9) 전 Teams 결과는 `validated:false`, "모델 추정값". 조치는 안내만, 앱이 직접 실행하지 않는다. 스키마는 docs/SCHEMA.md가 계약(필드 변경 전 확인)
+- Kakao/Zoom 결과는 `validated:false`, "모델 추정값". 스키마는 docs/SCHEMA.md가 계약(필드 변경 전 확인)
 - Meet는 통화 중 PeerConnection을 갈아탄다 → 정답은 fps>0이 가장 많은 PC를 고른다 (scripts/pilot_live.py `compare`)
 - vcaml 모델은 우리 환경에서 오차가 크다(P1 fps MAE 9.09). 성능 주장은 측정값과 함께
 
