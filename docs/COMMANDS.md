@@ -45,6 +45,33 @@
 | 진단 규칙 조정용 (dev 세트) | `--split dev` | test 결과는 조정에 쓰지 않는다 |
 | 1 tick 처리 시간 (지표 4개 + 진단 + What-if) | `uv run --with psutil python scripts/bench_tick.py --calls 10` | `data/bench/bench_tick.json` |
 
+## P5 실측 명령 E1–E6 (2026-10-31 옵션 확인 완료, repo 루트·PowerShell)
+공통: 블록마다 별도 터미널에서 typeperf(`<name>` = 블록 이름) 시작 → 실행 → dump 저장 → typeperf Ctrl+C → `overhead_report.py --name <name> --dump <dump.json>`. 한 번 실행 길이 = `--warm 150`(기본) + 단계 수 × `--pairs` × `--step` (`off,widget`·pairs 3·step 60이면 510초).
+노트북 IP: `(Get-NetIPAddress -InterfaceAlias 'Wi-Fi' -AddressFamily IPv4).IPAddress` → 아래 `<IP>`.
+```powershell
+# E1  구성요소 분해
+uv run --with psutil --with websockets python scripts/overhead_ab.py --name p5_e1 --dst <IP> --modes off,capture,server,widget --step 60 --pairs 3
+# E2  전체 코어 포화: 터미널 A(부하, 1200초 > 실행 510초) → 터미널 B(측정). 끝나면 A Ctrl+C
+uv run python scripts/cpu_load.py --name p5_e2_load --levels 90 --step 1200
+uv run --with psutil --with websockets python scripts/overhead_ab.py --name p5_e2 --dst <IP> --modes off,widget --step 60 --pairs 3
+# E3  같은 코어 경쟁: 터미널 A에 부하 하나(1500초 > 두 번 실행 약 1020초), B에서 3a → 3b. 끝나면 A Ctrl+C (Chrome affinity 복원 메시지 확인)
+uv run --with psutil python scripts/cpu_load.py --name p5_e3_load --levels 90 --step 1500 --pin 2
+uv run --with psutil --with websockets python scripts/overhead_ab.py --name p5_e3a --dst <IP> --modes off,widget --step 60 --pairs 3
+uv run --with psutil --with websockets python scripts/overhead_ab.py --name p5_e3b --dst <IP> --modes off,widget --step 60 --pairs 3 --pin-monitor 2
+# E4  메모리 압박: 터미널 A(Ctrl+C로 해제) → B
+uv run --with psutil python scripts/mem_hog.py --avail-mb 500
+uv run --with psutil --with websockets python scripts/overhead_ab.py --name p5_e4 --dst <IP> --modes off,widget --step 60 --pairs 3
+# E5  경량 (E2–E4 중 차이가 가장 컸던 부하를 다시 켠 채로 세 번)
+uv run --with psutil --with websockets python scripts/overhead_ab.py --name p5_e5_full --dst <IP> --modes off,widget --step 60 --pairs 3
+uv run --with psutil --with websockets python scripts/overhead_ab.py --name p5_e5_lite --dst <IP> --modes off,widget --step 60 --pairs 3 --snaplen 96 --every 5
+uv run --with psutil --with websockets python scripts/overhead_ab.py --name p5_e5_os   --dst <IP> --modes off,os --step 60 --pairs 3
+# E6  장시간 (부하 없음, 위젯 PiP 열어 둠). 끔 단계가 없어 PASS/FAIL은 "RSS 기울기" 한 줄만 나온다
+uv run --with psutil --with websockets python scripts/overhead_ab.py --name p5_e6 --dst <IP> --modes widget --step 1200 --pairs 1
+```
+- `--modes os` = psutil 1 Hz 기록만(tshark·모델 없음). E5의 "OS 지표만"과 같은 뜻. `--snaplen`/`--every`는 widget(서버)에만 적용된다(os에는 무의미).
+- E7(기기 밖 캡처)은 지원 옵션·명령 없음(수동: 팀원 Mac 핫스팟 + Wireshark).
+- 되돌리기: `cpu_load.py` Ctrl+C(부하 종료 + Chrome affinity 전체 코어 복원, 의심되면 Chrome 완전 종료 후 재실행) · `mem_hog.py` Ctrl+C · typeperf Ctrl+C · `overhead_ab.py` Ctrl+C(모니터 프로세스 정리 후 `end` 기록). `--pin-monitor`는 단계가 끝나면 프로세스가 종료돼 되돌릴 것이 없다.
+
 `bench_tick.py`는 `data/models/meet_{fps,bitrate,frame_jitter,frameHeight}_cv1.pkl`이 필요하다 (솔로 MLflow fold-1 모델 복사본, 경로는 `CLAUDE.local.md`). `psutil`은 메모리 측정용 임시 의존성이다(`--with`, 프로젝트에 추가 안 함).
 
 ## 개발 서버

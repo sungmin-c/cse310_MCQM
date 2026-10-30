@@ -45,6 +45,8 @@ connect();
 $("pip").onclick = async () => {
   const win = await documentPictureInPicture.requestWindow({ width: 330, height: 200 });
   win.document.body.style.cssText = "margin:0;background:#111;color:#eee;font:14px system-ui";
+  const home = $("box").parentNode;
   win.document.body.append($("box"));
+  win.addEventListener("pagehide", () => home.append($("box")));   // PiP를 닫으면 원래 페이지로 돌려 둔다
 };
 </script>
