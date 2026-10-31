@@ -101,8 +101,9 @@ def dump_table(path):
     raw = json.loads(Path(path).read_text(encoding="utf-8-sig"))
     reader = WebRTCReader(str(path), "in_lab_data")
 
-    def count(stats, key):
-        return len(ast.literal_eval(stats[key]["values"]))
+    def count(stats, key):   # 샘플 수가 아니라 실제로 디코드한 프레임 수 (끝난 통화의 잔여 스트림이 샘플 수는 더 길 수 있다)
+        v = ast.literal_eval(stats[key]["values"])
+        return v[-1] - v[0] if v else -1
 
     best, best_key, best_n = None, None, -1
     for conn in raw["PeerConnections"].values():
